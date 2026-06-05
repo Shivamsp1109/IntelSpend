@@ -1,0 +1,40 @@
+package com.spendwise.domain.usecase
+
+import com.spendwise.domain.model.Expense
+import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.repository.ExpenseRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.runTest
+import org.junit.Test
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.mock
+
+class AddExpenseUseCaseTest {
+    private val repository = mock(ExpenseRepository::class.java)
+    private val useCase = AddExpenseUseCase(repository)
+
+    @Test
+    fun `adds expense through repository`() = runTest {
+        val expense = Expense(
+            title = "Lunch",
+            amount = 250.0,
+            category = ExpenseCategory.Food,
+            date = 1_700_000_000_000
+        )
+
+        useCase(expense)
+
+        verify(repository).addExpense(expense)
+    }
+
+    @Suppress("unused")
+    private class EmptyRepository : ExpenseRepository {
+        override fun observeExpenses(): Flow<List<Expense>> = emptyFlow()
+        override fun searchExpenses(query: String, category: String?): Flow<List<Expense>> = emptyFlow()
+        override suspend fun addExpense(expense: Expense) = Unit
+        override suspend fun updateExpense(expense: Expense) = Unit
+        override suspend fun deleteExpense(expense: Expense) = Unit
+        override suspend fun syncPendingExpenses() = Unit
+    }
+}
