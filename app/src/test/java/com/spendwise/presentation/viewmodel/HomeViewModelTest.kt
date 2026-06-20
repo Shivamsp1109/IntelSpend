@@ -7,14 +7,20 @@ import com.spendwise.domain.repository.ExpenseRepository
 import com.spendwise.domain.usecase.GetBudgetStatusUseCase
 import com.spendwise.domain.usecase.GetExpensesUseCase
 import com.spendwise.domain.usecase.GetSmartInsightsUseCase
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
     @get:Rule
     val dispatcherRule = MainDispatcherRule()
@@ -34,12 +40,17 @@ class HomeViewModelTest {
             getBudgetStatusUseCase = GetBudgetStatusUseCase(),
             getSmartInsightsUseCase = GetSmartInsightsUseCase()
         )
+        val collectJob = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
 
         val state = viewModel.uiState.value
 
         assertEquals(850.0, state.totalExpense, 0.0)
         assertEquals(850.0, state.todayExpense, 0.0)
         assertEquals(2, state.recentTransactions.size)
+        collectJob.cancel()
     }
 
     private class FakeExpenseRepository(
