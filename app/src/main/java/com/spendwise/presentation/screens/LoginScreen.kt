@@ -1,5 +1,6 @@
 package com.spendwise.presentation.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,8 +29,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.spendwise.R
 import com.spendwise.presentation.components.PurpleGradient
 import com.spendwise.presentation.components.SpendWisePurple
 import com.spendwise.presentation.components.SpendWiseTextMuted
@@ -57,6 +60,12 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Image(
+            painter = painterResource(R.drawable.app_logo),
+            contentDescription = "SpendWise logo",
+            modifier = Modifier.height(96.dp)
+        )
+        Spacer(Modifier.height(12.dp))
         Text("SpendWise", color = Color.White, style = MaterialTheme.typography.headlineLarge)
         Text("Track. Analyze. Save Better.", color = Color.White.copy(alpha = 0.78f))
         Spacer(Modifier.height(24.dp))
