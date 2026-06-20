@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.usecase.AddExpenseUseCase
+import com.spendwise.util.AppMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +14,8 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class AddExpenseViewModel @Inject constructor(
-    private val addExpenseUseCase: AddExpenseUseCase
+    private val addExpenseUseCase: AddExpenseUseCase,
+    private val appMetrics: AppMetrics
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(AddExpenseUiState())
     val uiState = _uiState.asStateFlow()
@@ -50,6 +52,7 @@ class AddExpenseViewModel @Inject constructor(
                     date = state.date
                 )
             )
+            appMetrics.logExpenseSaved(state.category.label, amount)
             onSaved()
         }
     }

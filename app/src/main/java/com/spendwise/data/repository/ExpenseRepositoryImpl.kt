@@ -6,6 +6,10 @@ import com.spendwise.data.local.toEntity
 import com.spendwise.data.remote.FirestoreExpenseDataSource
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.repository.ExpenseRepository
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -17,8 +21,20 @@ class ExpenseRepositoryImpl @Inject constructor(
     override fun observeExpenses(): Flow<List<Expense>> =
         dao.observeExpenses().map { expenses -> expenses.map { it.toDomain() } }
 
+    override fun observePagedExpenses(query: String, category: String?): Flow<PagingData<Expense>> =
+        Pager(
+            config = PagingConfig(
+                pageSize = 40,
+                prefetchDistance = 10,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { dao.pagingSource(query, category) }
+        ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
+
     override fun searchExpenses(query: String, category: String?): Flow<List<Expense>> =
         dao.searchExpenses(query, category).map { expenses -> expenses.map { it.toDomain() } }
+
+    override fun observePendingSyncCount(): Flow<Int> = dao.observePendingSyncCount()
 
     override suspend fun addExpense(expense: Expense) {
         dao.insertExpense(expense.copy(isSynced = false).toEntity())

@@ -60,14 +60,28 @@ fun SpendWiseNavHost() {
             AddExpenseScreen(onSaved = { navController.popBackStack() })
         }
         composable(Routes.ExpenseList.route) {
-            ExpenseListScreen(onBack = { navController.popBackStack() })
+            ExpenseListScreen(
+                onHome = { navController.navigate(Routes.Home.route) },
+                onAddExpense = { navController.navigate(Routes.AddExpense.route) },
+                onAnalytics = { navController.navigate(Routes.Analytics.route) },
+                onProfile = { navController.navigate(Routes.Profile.route) }
+            )
         }
         composable(Routes.Analytics.route) {
-            AnalyticsScreen(onBack = { navController.popBackStack() })
+            AnalyticsScreen(
+                onHome = { navController.navigate(Routes.Home.route) },
+                onTransactions = { navController.navigate(Routes.ExpenseList.route) },
+                onAddExpense = { navController.navigate(Routes.AddExpense.route) },
+                onProfile = { navController.navigate(Routes.Profile.route) }
+            )
         }
         composable(Routes.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
+                onHome = { navController.navigate(Routes.Home.route) },
+                onTransactions = { navController.navigate(Routes.ExpenseList.route) },
+                onAddExpense = { navController.navigate(Routes.AddExpense.route) },
+                onAnalytics = { navController.navigate(Routes.Analytics.route) },
                 onLogout = {
                     navController.navigate(Routes.Login.route) {
                         popUpTo(Routes.Home.route) { inclusive = true }
