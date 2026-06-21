@@ -3,15 +3,20 @@ package com.spendwise.presentation.viewmodel
 import com.spendwise.MainDispatcherRule
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.repository.AuthRepository
+import com.spendwise.domain.repository.AuthUser
 import com.spendwise.domain.repository.ExpenseRepository
+import com.spendwise.domain.repository.Gender
 import com.spendwise.domain.usecase.GetBudgetStatusUseCase
 import com.spendwise.domain.usecase.GetExpensesUseCase
 import com.spendwise.domain.usecase.GetPendingSyncCountUseCase
 import com.spendwise.domain.usecase.GetSmartInsightsUseCase
+import com.spendwise.util.IncomePreferenceStore
 import com.spendwise.util.NetworkMonitor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -43,6 +48,8 @@ class HomeViewModelTest {
             getExpensesUseCase = GetExpensesUseCase(repository),
             getPendingSyncCountUseCase = GetPendingSyncCountUseCase(repository),
             networkMonitor = FakeNetworkMonitor(),
+            authRepository = FakeAuthRepository(),
+            incomePreferenceStore = FakeIncomePreferenceStore(),
             getBudgetStatusUseCase = GetBudgetStatusUseCase(),
             getSmartInsightsUseCase = GetSmartInsightsUseCase()
         )
@@ -56,6 +63,8 @@ class HomeViewModelTest {
         assertEquals(850.0, state.totalExpense, 0.0)
         assertEquals(850.0, state.todayExpense, 0.0)
         assertEquals(2, state.recentTransactions.size)
+        assertEquals("Shivam", state.userName)
+        assertEquals(10_000.0, state.monthlyIncome, 0.0)
         collectJob.cancel()
     }
 
@@ -74,5 +83,36 @@ class HomeViewModelTest {
 
     private class FakeNetworkMonitor : NetworkMonitor {
         override val isOnline: Flow<Boolean> = flowOf(true)
+    }
+
+    private class FakeAuthRepository : AuthRepository {
+        override val currentUser: Flow<AuthUser?> = flowOf(
+            AuthUser(
+                id = "user-1",
+                name = "Shivam",
+                email = "shivam@example.com",
+                gender = Gender.Male
+            )
+        )
+
+        override suspend fun loginWithEmail(email: String, password: String): Result<Unit> = Result.success(Unit)
+        override suspend fun registerWithEmail(
+            email: String,
+            password: String,
+            name: String,
+            gender: Gender,
+            profileImageUri: android.net.Uri?
+        ): Result<Unit> = Result.success(Unit)
+
+        override suspend fun loginWithGoogleIdToken(idToken: String): Result<Unit> = Result.success(Unit)
+        override suspend fun logout() = Unit
+    }
+
+    private class FakeIncomePreferenceStore : IncomePreferenceStore {
+        private val income = MutableStateFlow(10_000.0)
+        override val monthlyIncome: StateFlow<Double> = income
+        override fun setMonthlyIncome(value: Double) {
+            income.value = value
+        }
     }
 }

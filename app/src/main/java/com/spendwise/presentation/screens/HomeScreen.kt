@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Savings
@@ -24,14 +25,21 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -58,9 +66,13 @@ fun HomeScreen(
     onViewExpenses: () -> Unit,
     onAnalytics: () -> Unit,
     onProfile: () -> Unit,
+    onNotifications: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var pendingIncomeText by rememberSaveable { mutableStateOf("") }
+    var showIncomeDialog by rememberSaveable { mutableStateOf(false) }
+    val userIncome = state.monthlyIncome
 
     SpendWiseScreen(
         selected = BottomDestination.Home,
@@ -77,33 +89,55 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                HeaderRow(
-                    title = "Hello, Shivam",
-                    subtitle = "Here's your overview",
-                    action = {
-                        IconButton(onClick = onProfile) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = SpendWisePurple)
-                        }
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(PurpleGradient)
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        HeaderRow(
+                            title = "Hello, ${state.userName}",
+                            subtitle = "Here's your overview",
+                            titleColor = Color.White,
+                            subtitleColor = Color.White.copy(alpha = 0.78f),
+                            action = {
+                                IconButton(onClick = onNotifications) {
+                                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
+                                }
+                            }
+                        )
+                        BalanceCard(
+                            total = CurrencyFormatter.format(state.totalExpense),
+                            syncText = "${state.networkSyncStatus.label} - ${state.networkSyncStatus.pendingSyncCount} pending"
+                        )
                     }
-                )
+                }
             }
             item {
-                BalanceCard(
-                    total = CurrencyFormatter.format(state.totalExpense),
-                    syncText = "${state.networkSyncStatus.label} - ${state.networkSyncStatus.pendingSyncCount} pending"
-                )
-            }
-            item {
-                Text("Quick Summary", style = MaterialTheme.typography.titleMedium)
+                Text("Quick Summary", style = MaterialTheme.typography.titleMedium, color = Color(0xFF17102A))
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SummaryTile(
                         label = "Income",
-                        value = CurrencyFormatter.format(40_060.0),
-                        helper = "+8.8%",
+                        value = if (userIncome > 0.0) CurrencyFormatter.format(userIncome) else "Add income",
+                        helper = "Tap to set",
                         iconTint = SpendWiseGreen,
                         icon = Icons.Default.TrendingUp,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                pendingIncomeText = if (state.monthlyIncome > 0.0) {
+                                    state.monthlyIncome.toString()
+                                } else {
+                                    ""
+                                }
+                                showIncomeDialog = true
+                            }
                     )
                     SummaryTile(
                         label = "Expense",
@@ -115,8 +149,8 @@ fun HomeScreen(
                     )
                     SummaryTile(
                         label = "Savings",
-                        value = CurrencyFormatter.format((40_060.0 - state.monthExpense).coerceAtLeast(0.0)),
-                        helper = "+10.5%",
+                        value = CurrencyFormatter.format((userIncome - state.monthExpense).coerceAtLeast(0.0)),
+                        helper = if (userIncome > 0.0) "This month" else "Set income",
                         iconTint = SpendWisePurple,
                         icon = Icons.Default.Savings,
                         modifier = Modifier.weight(1f)
@@ -131,7 +165,7 @@ fun HomeScreen(
                 ) {
                     Column(Modifier.padding(14.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Budget Progress", style = MaterialTheme.typography.titleMedium)
+                            Text("Budget Progress", style = MaterialTheme.typography.titleMedium, color = Color.Black)
                             Text("70%", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge)
                         }
                         Spacer(Modifier.height(8.dp))
@@ -150,7 +184,7 @@ fun HomeScreen(
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Recent Transactions", style = MaterialTheme.typography.titleMedium)
+                    Text("All Transactions", style = MaterialTheme.typography.titleMedium, color = Color.Black)
                     Text("See All", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -174,6 +208,36 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showIncomeDialog) {
+        AlertDialog(
+            onDismissRequest = { showIncomeDialog = false },
+            title = { Text("Add monthly income") },
+            text = {
+                OutlinedTextField(
+                    value = pendingIncomeText,
+                    onValueChange = { pendingIncomeText = it },
+                    label = { Text("Income amount") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        pendingIncomeText.toDoubleOrNull()?.let(viewModel::updateMonthlyIncome)
+                        showIncomeDialog = false
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIncomeDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -186,7 +250,6 @@ private fun BalanceCard(total: String, syncText: String) {
     ) {
         Box(
             modifier = Modifier
-                .background(PurpleGradient)
                 .padding(18.dp)
         ) {
             Canvas(modifier = Modifier.matchParentSize()) {

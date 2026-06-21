@@ -10,6 +10,7 @@ import com.spendwise.presentation.screens.AnalyticsScreen
 import com.spendwise.presentation.screens.ExpenseListScreen
 import com.spendwise.presentation.screens.HomeScreen
 import com.spendwise.presentation.screens.LoginScreen
+import com.spendwise.presentation.screens.NotificationsScreen
 import com.spendwise.presentation.screens.ProfileScreen
 import com.spendwise.presentation.screens.SplashScreen
 import com.spendwise.presentation.viewmodel.AuthViewModel
@@ -53,7 +54,8 @@ fun SpendWiseNavHost() {
                 onAddExpense = { navController.navigate(Routes.AddExpense.route) },
                 onViewExpenses = { navController.navigate(Routes.ExpenseList.route) },
                 onAnalytics = { navController.navigate(Routes.Analytics.route) },
-                onProfile = { navController.navigate(Routes.Profile.route) }
+                onProfile = { navController.navigate(Routes.Profile.route) },
+                onNotifications = { navController.navigate(Routes.Notifications.route) }
             )
         }
         composable(Routes.AddExpense.route) {
@@ -88,6 +90,9 @@ fun SpendWiseNavHost() {
                     }
                 }
             )
+        }
+        composable(Routes.Notifications.route) {
+            NotificationsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

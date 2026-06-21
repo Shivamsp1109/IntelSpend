@@ -126,6 +126,8 @@ enum class BottomDestination(val label: String, val icon: ImageVector) {
 fun HeaderRow(
     title: String,
     subtitle: String? = null,
+    titleColor: Color = Color(0xFF17102A),
+    subtitleColor: Color = SpendWiseTextMuted,
     action: @Composable (() -> Unit)? = null
 ) {
     Row(
@@ -134,9 +136,9 @@ fun HeaderRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         androidx.compose.foundation.layout.Column {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = Color(0xFF17102A))
+            Text(title, style = MaterialTheme.typography.titleLarge, color = titleColor)
             subtitle?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = SpendWiseTextMuted)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = subtitleColor)
             }
         }
         action?.invoke()
