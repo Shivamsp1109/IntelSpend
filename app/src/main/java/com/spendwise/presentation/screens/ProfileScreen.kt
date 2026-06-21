@@ -32,9 +32,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.spendwise.R
 import com.spendwise.presentation.components.BottomDestination
 import com.spendwise.presentation.components.PurpleGradient
 import com.spendwise.presentation.components.SpendWisePurple
@@ -87,11 +90,26 @@ fun ProfileScreen(
                             .background(Color.White.copy(alpha = 0.18f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(34.dp))
+                        AsyncImage(
+                            model = user?.displayPhotoUrl ?: R.drawable.default_profile_avatar,
+                            contentDescription = "Profile image",
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.14f), CircleShape)
+                        )
                     }
                     Column {
                         Text(user?.name ?: "Shivam Kumar", color = Color.White, style = MaterialTheme.typography.titleMedium)
                         Text(user?.email ?: "spendwise@example.com", color = Color.White.copy(alpha = 0.76f), style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            providerLabel(
+                                isGoogleUser = user?.isGoogleUser == true,
+                                isEmailPasswordUser = user?.isEmailPasswordUser == true
+                            ),
+                            color = Color.White.copy(alpha = 0.70f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                 }
             }
@@ -116,6 +134,13 @@ fun ProfileScreen(
             }
         }
     }
+}
+
+private fun providerLabel(isGoogleUser: Boolean, isEmailPasswordUser: Boolean): String = when {
+    isGoogleUser && isEmailPasswordUser -> "Google and Email account"
+    isGoogleUser -> "Google account"
+    isEmailPasswordUser -> "Email account"
+    else -> "SpendWise account"
 }
 
 @Composable

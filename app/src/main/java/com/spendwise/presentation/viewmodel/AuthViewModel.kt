@@ -1,9 +1,11 @@
 package com.spendwise.presentation.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendwise.domain.repository.AuthRepository
 import com.spendwise.domain.repository.AuthUser
+import com.spendwise.domain.repository.Gender
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,10 +36,30 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun register(email: String, password: String) {
+    fun register(
+        email: String,
+        password: String,
+        name: String,
+        gender: Gender?,
+        profileImageUri: Uri?
+    ) {
+        if (name.isBlank()) {
+            _loginState.value = LoginUiState(error = "Enter your name.")
+            return
+        }
+        if (gender == null) {
+            _loginState.value = LoginUiState(error = "Select your gender.")
+            return
+        }
         viewModelScope.launch {
             _loginState.value = LoginUiState(isLoading = true)
-            val result = authRepository.registerWithEmail(email.trim(), password)
+            val result = authRepository.registerWithEmail(
+                email = email.trim(),
+                password = password,
+                name = name.trim(),
+                gender = gender,
+                profileImageUri = profileImageUri
+            )
             _loginState.value = LoginUiState(error = result.exceptionOrNull()?.message)
         }
     }
@@ -48,6 +70,10 @@ class AuthViewModel @Inject constructor(
             val result = authRepository.loginWithGoogleIdToken(idToken)
             _loginState.value = LoginUiState(error = result.exceptionOrNull()?.message)
         }
+    }
+
+    fun showAuthError(message: String) {
+        _loginState.value = LoginUiState(error = message)
     }
 
     fun logout() {
