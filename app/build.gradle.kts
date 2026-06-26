@@ -21,7 +21,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "MYSQL_API_BASE_URL", "\"https://your-mysql-api.example.com/\"")
+        buildConfigField("String", "MYSQL_API_BASE_URL", "\"http://10.0.2.2:3000/\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

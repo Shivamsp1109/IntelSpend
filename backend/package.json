@@ -1,0 +1,21 @@
+{
+  "name": "spendwise-backend",
+  "version": "1.0.0",
+  "description": "SpendWise MySQL REST API for Android sync",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "check": "node --check src/server.js && node --check src/config/db.js && node --check src/config/firebase.js && node --check src/middleware/auth.js && node --check src/routes/users.js && node --check src/routes/expenses.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2",
+    "mysql2": "^3.11.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
