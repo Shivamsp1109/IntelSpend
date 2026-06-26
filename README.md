@@ -25,10 +25,10 @@ SpendWise is an offline-first expense tracker built with Kotlin, Jetpack Compose
 - Add Budget Tracking
 
 ## How to start MySQL Backend
-cd "C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64"
-.\bin\mysqld.exe --console --port=3307 --basedir="C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64" --datadir="C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64\data"
+- cd "C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64"
+- .\bin\mysqld.exe --console --port=3307 --basedir="C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64" --datadir="C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64\data"
 
 ## Next MySQL start
-cd "C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64"
-& "C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64\bin\mysql.exe" -h 127.0.0.1 -P 3307 -u spendwise_user -p
+- cd "C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64"
+- & "C:\Users\Shivam\Downloads\mysql-8.0.46-winx64\mysql-8.0.46-winx64\bin\mysql.exe" -h 127.0.0.1 -P 3307 -u spendwise_user -p
 Now write the password
