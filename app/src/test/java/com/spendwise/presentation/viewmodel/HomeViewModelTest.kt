@@ -11,6 +11,7 @@ import com.spendwise.domain.usecase.GetBudgetStatusUseCase
 import com.spendwise.domain.usecase.GetExpensesUseCase
 import com.spendwise.domain.usecase.GetPendingSyncCountUseCase
 import com.spendwise.domain.usecase.GetSmartInsightsUseCase
+import com.spendwise.domain.usecase.SyncPendingExpensesUseCase
 import com.spendwise.util.IncomePreferenceStore
 import com.spendwise.util.NetworkMonitor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,7 +52,8 @@ class HomeViewModelTest {
             authRepository = FakeAuthRepository(),
             incomePreferenceStore = FakeIncomePreferenceStore(),
             getBudgetStatusUseCase = GetBudgetStatusUseCase(),
-            getSmartInsightsUseCase = GetSmartInsightsUseCase()
+            getSmartInsightsUseCase = GetSmartInsightsUseCase(),
+            syncPendingExpensesUseCase = SyncPendingExpensesUseCase(repository)
         )
         val collectJob = launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
@@ -65,6 +67,8 @@ class HomeViewModelTest {
         assertEquals(2, state.recentTransactions.size)
         assertEquals("Shivam", state.userName)
         assertEquals(10_000.0, state.monthlyIncome, 0.0)
+        assertEquals(10_000.0, state.budgetStatus.monthlyBudget, 0.0)
+        assertEquals(9, state.budgetStatus.roundedUsagePercent)
         collectJob.cancel()
     }
 

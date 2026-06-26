@@ -55,7 +55,11 @@ fun ExpenseRow(
         ) {
             CategoryBadge(expense.category)
             Column(modifier = Modifier.weight(1f)) {
-                Text(expense.title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    expense.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Black
+                )
                 Text(
                     "${expense.category.label} - ${DateUtils.formatDate(expense.date)}",
                     style = MaterialTheme.typography.bodySmall,

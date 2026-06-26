@@ -119,7 +119,7 @@ fun HomeScreen(
                 }
             }
             item {
-                Text("Quick Summary", style = MaterialTheme.typography.titleMedium, color = Color(0xFF17102A))
+                Text("Quick Summary", style = MaterialTheme.typography.titleMedium, color = SpendWisePurple)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SummaryTile(
@@ -158,6 +158,7 @@ fun HomeScreen(
                 }
             }
             item {
+                val roundedBudgetPercent = state.budgetStatus.roundedUsagePercent
                 Card(
                     shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -166,7 +167,7 @@ fun HomeScreen(
                     Column(Modifier.padding(14.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Budget Progress", style = MaterialTheme.typography.titleMedium, color = Color.Black)
-                            Text("70%", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge)
+                            Text("$roundedBudgetPercent%", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge)
                         }
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(
@@ -177,15 +178,23 @@ fun HomeScreen(
                         )
                         if (state.budgetStatus.isNearLimit) {
                             Spacer(Modifier.height(8.dp))
-                            Text("You have exceeded 90% of your budget.", color = MaterialTheme.colorScheme.error)
+                            Text(
+                                "You have exceeded $roundedBudgetPercent% of your budget.",
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("All Transactions", style = MaterialTheme.typography.titleMedium, color = Color.Black)
-                    Text("See All", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge)
+                    Text("All Transactions", color = SpendWisePurple, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "See All",
+                        modifier = Modifier.clickable(onClick = onViewExpenses),
+                        color = SpendWisePurple,
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
             items(state.recentTransactions, key = { it.id }) { expense ->

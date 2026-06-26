@@ -1,6 +1,8 @@
 package com.spendwise.data.repository
 
+import android.util.Log
 import com.spendwise.data.local.ExpenseDao
+import com.spendwise.data.local.ExpenseEntity
 import com.spendwise.data.local.toDomain
 import com.spendwise.data.local.toEntity
 import com.spendwise.data.remote.MySqlExpenseDataSource
@@ -39,13 +41,15 @@ class ExpenseRepositoryImpl @Inject constructor(
     override fun observePendingSyncCount(): Flow<Int> = dao.observePendingSyncCount()
 
     override suspend fun addExpense(expense: Expense) {
-        dao.insertExpense(expense.copy(isSynced = false).toEntity())
-        syncScheduler.enqueueImmediateSync()
+        val entity = expense.copy(isSynced = false).toEntity()
+        val inserted = entity.copy(id = dao.insertExpense(entity).toInt())
+        syncExpenseOrEnqueueRetry(inserted)
     }
 
     override suspend fun updateExpense(expense: Expense) {
-        dao.updateExpense(expense.copy(isSynced = false).toEntity())
-        syncScheduler.enqueueImmediateSync()
+        val entity = expense.copy(isSynced = false).toEntity()
+        dao.updateExpense(entity)
+        syncExpenseOrEnqueueRetry(entity)
     }
 
     override suspend fun deleteExpense(expense: Expense) {
@@ -57,5 +61,19 @@ class ExpenseRepositoryImpl @Inject constructor(
             remoteDataSource.upsertExpense(entity)
             dao.updateExpense(entity.copy(isSynced = true))
         }
+    }
+
+    private suspend fun syncExpenseOrEnqueueRetry(entity: ExpenseEntity) {
+        runCatching {
+            remoteDataSource.upsertExpense(entity)
+            dao.updateExpense(entity.copy(isSynced = true))
+        }.onFailure { error ->
+            Log.w(TAG, "Immediate expense sync failed; enqueuing retry.", error)
+            syncScheduler.enqueueImmediateSync()
+        }
+    }
+
+    private companion object {
+        const val TAG = "ExpenseRepository"
     }
 }

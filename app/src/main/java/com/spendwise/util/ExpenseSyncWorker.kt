@@ -1,6 +1,7 @@
 package com.spendwise.util
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -18,6 +19,13 @@ class ExpenseSyncWorker @AssistedInject constructor(
         repository.syncPendingExpenses()
     }.fold(
         onSuccess = { Result.success() },
-        onFailure = { Result.retry() }
+        onFailure = { error ->
+            Log.w(TAG, "Expense sync failed; will retry.", error)
+            Result.retry()
+        }
     )
+
+    private companion object {
+        const val TAG = "ExpenseSyncWorker"
+    }
 }

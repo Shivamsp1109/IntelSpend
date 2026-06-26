@@ -41,7 +41,7 @@ interface ExpenseDao {
     fun observePendingSyncCount(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertExpense(expense: ExpenseEntity)
+    suspend fun insertExpense(expense: ExpenseEntity): Long
 
     @Update
     suspend fun updateExpense(expense: ExpenseEntity)

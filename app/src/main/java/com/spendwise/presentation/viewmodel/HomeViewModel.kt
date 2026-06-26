@@ -1,5 +1,6 @@
 package com.spendwise.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendwise.domain.model.BudgetStatus
@@ -11,6 +12,7 @@ import com.spendwise.domain.usecase.GetBudgetStatusUseCase
 import com.spendwise.domain.usecase.GetExpensesUseCase
 import com.spendwise.domain.usecase.GetPendingSyncCountUseCase
 import com.spendwise.domain.usecase.GetSmartInsightsUseCase
+import com.spendwise.domain.usecase.SyncPendingExpensesUseCase
 import com.spendwise.util.DateUtils
 import com.spendwise.util.IncomePreferenceStore
 import com.spendwise.util.NetworkMonitor
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -30,7 +33,8 @@ class HomeViewModel @Inject constructor(
     authRepository: AuthRepository,
     private val incomePreferenceStore: IncomePreferenceStore,
     private val getBudgetStatusUseCase: GetBudgetStatusUseCase,
-    private val getSmartInsightsUseCase: GetSmartInsightsUseCase
+    private val getSmartInsightsUseCase: GetSmartInsightsUseCase,
+    private val syncPendingExpensesUseCase: SyncPendingExpensesUseCase
 ) : ViewModel() {
     val uiState: StateFlow<HomeUiState> = combine(
         getExpensesUseCase(),
@@ -46,12 +50,21 @@ class HomeViewModel @Inject constructor(
                 monthExpense = expenses.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount },
                 todayExpense = expenses.filter { DateUtils.isToday(it.date) }.sumOf { it.amount },
                 recentTransactions = expenses.take(5),
-                budgetStatus = getBudgetStatusUseCase(expenses, 15_000.0),
+                budgetStatus = getBudgetStatusUseCase(expenses, monthlyIncome),
                 insights = getSmartInsightsUseCase(expenses),
                 networkSyncStatus = NetworkSyncStatus(isOnline, pendingSyncCount)
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+
+    init {
+        viewModelScope.launch {
+            runCatching { syncPendingExpensesUseCase() }
+                .onFailure { error ->
+                    Log.w(TAG, "Foreground pending expense sync failed.", error)
+                }
+        }
+    }
 
     fun updateMonthlyIncome(value: Double) {
         incomePreferenceStore.setMonthlyIncome(value)
@@ -65,7 +78,9 @@ data class HomeUiState(
     val monthExpense: Double = 0.0,
     val todayExpense: Double = 0.0,
     val recentTransactions: List<Expense> = emptyList(),
-    val budgetStatus: BudgetStatus = BudgetStatus(15_000.0, 0.0),
+    val budgetStatus: BudgetStatus = BudgetStatus(0.0, 0.0),
     val insights: List<Insight> = emptyList(),
     val networkSyncStatus: NetworkSyncStatus = NetworkSyncStatus(isOnline = false, pendingSyncCount = 0)
 )
+
+private const val TAG = "HomeViewModel"
