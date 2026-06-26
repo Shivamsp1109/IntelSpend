@@ -35,7 +35,7 @@ class NotificationScheduler @Inject constructor(
             )
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "expense_firestore_sync",
+            "expense_mysql_periodic_sync",
             ExistingPeriodicWorkPolicy.UPDATE,
             syncRequest
         )

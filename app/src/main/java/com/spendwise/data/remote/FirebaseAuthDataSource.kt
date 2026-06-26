@@ -4,21 +4,20 @@ import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import com.google.firebase.storage.FirebaseStorage
 import com.spendwise.domain.repository.Gender
 import com.spendwise.domain.repository.AuthUser
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class FirebaseAuthDataSource @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
-    private val firestore: FirebaseFirestore,
-    private val storage: FirebaseStorage
+    private val storage: FirebaseStorage,
+    private val userDataSource: MySqlUserDataSource
 ) {
     val currentUser: Flow<AuthUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
@@ -27,31 +26,32 @@ class FirebaseAuthDataSource @Inject constructor(
                 trySend(null)
                 return@AuthStateListener
             }
-            firestore.collection(USERS_COLLECTION).document(user.uid).get()
-                .addOnSuccessListener { doc ->
-                    trySend(
-                        AuthUser(
-                            id = user.uid,
-                            name = doc.getString("name") ?: user.displayName,
-                            email = user.email,
-                            gender = Gender.fromLabel(doc.getString("gender")),
-                            photoUrl = user.photoUrl?.toString(),
-                            providerIds = user.providerData.map { it.providerId }.filter { it != "firebase" },
-                            explicitProfileImageUrl = doc.getString("explicitProfileImageUrl")
+            launch {
+                runCatching { userDataSource.getCurrentUserProfile() }
+                    .onSuccess { profile ->
+                        trySend(
+                            AuthUser(
+                                id = user.uid,
+                                name = profile?.name?.takeIf { it.isNotBlank() } ?: user.displayName,
+                                email = user.email,
+                                gender = Gender.fromLabel(profile?.gender),
+                                photoUrl = user.photoUrl?.toString(),
+                                providerIds = user.providerData.map { it.providerId }.filter { it != "firebase" },
+                                explicitProfileImageUrl = profile?.explicitProfileImageUrl
+                            )
                         )
-                    )
-                }
-                .addOnFailureListener {
-                    trySend(
-                        AuthUser(
-                            id = user.uid,
-                            name = user.displayName,
-                            email = user.email,
-                            photoUrl = user.photoUrl?.toString(),
-                            providerIds = user.providerData.map { it.providerId }.filter { it != "firebase" }
+                    }.onFailure {
+                        trySend(
+                            AuthUser(
+                                id = user.uid,
+                                name = user.displayName,
+                                email = user.email,
+                                photoUrl = user.photoUrl?.toString(),
+                                providerIds = user.providerData.map { it.providerId }.filter { it != "firebase" }
+                            )
                         )
-                    )
-                }
+                    }
+            }
         }
         firebaseAuth.addAuthStateListener(listener)
         awaitClose { firebaseAuth.removeAuthStateListener(listener) }
@@ -125,30 +125,20 @@ class FirebaseAuthDataSource @Inject constructor(
         googlePhotoUrl: String?,
         providers: List<String>
     ) {
-        val doc = firestore.collection(USERS_COLLECTION).document(uid)
-        val existing = doc.get().await()
-        val existingExplicitImage = existing.getString("explicitProfileImageUrl")
-        val existingProviders = existing.get("providers") as? List<*>
-        val mergedProviders = (providers + existingProviders.orEmpty().filterIsInstance<String>())
+        val existing = runCatching { userDataSource.getCurrentUserProfile() }.getOrNull()
+        val mergedProviders = (providers + existing?.providers.orEmpty())
             .distinct()
 
-        val data = mutableMapOf<String, Any>(
-            "uid" to uid,
-            "name" to (name ?: existing.getString("name").orEmpty()),
-            "email" to email.orEmpty(),
-            "providers" to mergedProviders,
-            "updatedAt" to System.currentTimeMillis()
+        val data = UserProfilePayload(
+            uid = uid,
+            name = name ?: existing?.name.orEmpty(),
+            email = email ?: existing?.email.orEmpty(),
+            gender = gender?.label ?: existing?.gender,
+            explicitProfileImageUrl = explicitProfileImageUrl ?: existing?.explicitProfileImageUrl,
+            googlePhotoUrl = googlePhotoUrl ?: existing?.googlePhotoUrl,
+            providers = mergedProviders,
+            updatedAt = System.currentTimeMillis()
         )
-        gender?.let { data["gender"] = it.label }
-        googlePhotoUrl?.let { data["googlePhotoUrl"] = it }
-        (explicitProfileImageUrl ?: existingExplicitImage)?.let {
-            data["explicitProfileImageUrl"] = it
-        }
-
-        doc.set(data, SetOptions.merge()).await()
-    }
-
-    private companion object {
-        const val USERS_COLLECTION = "users"
+        userDataSource.upsertCurrentUserProfile(data)
     }
 }

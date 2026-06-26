@@ -3,9 +3,10 @@ package com.spendwise.data.repository
 import com.spendwise.data.local.ExpenseDao
 import com.spendwise.data.local.toDomain
 import com.spendwise.data.local.toEntity
-import com.spendwise.data.remote.FirestoreExpenseDataSource
+import com.spendwise.data.remote.MySqlExpenseDataSource
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.repository.ExpenseRepository
+import com.spendwise.util.ExpenseSyncScheduler
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -16,7 +17,8 @@ import javax.inject.Inject
 
 class ExpenseRepositoryImpl @Inject constructor(
     private val dao: ExpenseDao,
-    private val remoteDataSource: FirestoreExpenseDataSource
+    private val remoteDataSource: MySqlExpenseDataSource,
+    private val syncScheduler: ExpenseSyncScheduler
 ) : ExpenseRepository {
     override fun observeExpenses(): Flow<List<Expense>> =
         dao.observeExpenses().map { expenses -> expenses.map { it.toDomain() } }
@@ -38,10 +40,12 @@ class ExpenseRepositoryImpl @Inject constructor(
 
     override suspend fun addExpense(expense: Expense) {
         dao.insertExpense(expense.copy(isSynced = false).toEntity())
+        syncScheduler.enqueueImmediateSync()
     }
 
     override suspend fun updateExpense(expense: Expense) {
         dao.updateExpense(expense.copy(isSynced = false).toEntity())
+        syncScheduler.enqueueImmediateSync()
     }
 
     override suspend fun deleteExpense(expense: Expense) {
