@@ -114,9 +114,15 @@ class HomeViewModelTest {
 
     private class FakeIncomePreferenceStore : IncomePreferenceStore {
         private val income = MutableStateFlow(10_000.0)
+        private val drafts = MutableStateFlow("{}")
         override val monthlyIncome: StateFlow<Double> = income
+        override val incomeDrafts: StateFlow<String> = drafts
         override fun setMonthlyIncome(value: Double) {
             income.value = value
+        }
+
+        override fun setIncomeDrafts(value: String) {
+            drafts.value = value
         }
     }
 }

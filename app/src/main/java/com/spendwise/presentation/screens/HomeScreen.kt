@@ -25,15 +25,11 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,6 +46,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendwise.presentation.components.ExpenseRow
 import com.spendwise.presentation.components.BottomDestination
 import com.spendwise.presentation.components.HeaderRow
+import com.spendwise.presentation.components.IncomeBottomSheet
 import com.spendwise.presentation.components.PurpleGradient
 import com.spendwise.presentation.components.SpendWiseGreen
 import com.spendwise.presentation.components.SpendWiseOrange
@@ -59,6 +56,7 @@ import com.spendwise.presentation.components.SpendWiseSoftPurple
 import com.spendwise.presentation.components.SpendWiseTextMuted
 import com.spendwise.presentation.viewmodel.HomeViewModel
 import com.spendwise.util.CurrencyFormatter
+import com.spendwise.util.DateUtils
 
 @Composable
 fun HomeScreen(
@@ -70,8 +68,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    var pendingIncomeText by rememberSaveable { mutableStateOf("") }
-    var showIncomeDialog by rememberSaveable { mutableStateOf(false) }
+    val incomeDrafts by viewModel.incomeDrafts.collectAsState()
+    var showIncomeSheet by rememberSaveable { mutableStateOf(false) }
     val userIncome = state.monthlyIncome
 
     SpendWiseScreen(
@@ -119,30 +117,30 @@ fun HomeScreen(
                 }
             }
             item {
-                Text("Quick Summary", style = MaterialTheme.typography.titleMedium, color = SpendWisePurple)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Quick Summary", style = MaterialTheme.typography.titleMedium, color = SpendWisePurple)
+                    Text(
+                        DateUtils.formatDate(System.currentTimeMillis()),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SpendWisePurple
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SummaryTile(
                         label = "Income",
                         value = if (userIncome > 0.0) CurrencyFormatter.format(userIncome) else "Add income",
-                        helper = "Tap to set",
+                        helper = "Tap to add",
                         iconTint = SpendWiseGreen,
                         icon = Icons.Default.TrendingUp,
                         modifier = Modifier
                             .weight(1f)
-                            .clickable {
-                                pendingIncomeText = if (state.monthlyIncome > 0.0) {
-                                    state.monthlyIncome.toString()
-                                } else {
-                                    ""
-                                }
-                                showIncomeDialog = true
-                            }
+                            .clickable { showIncomeSheet = true }
                     )
                     SummaryTile(
                         label = "Expense",
                         value = CurrencyFormatter.format(state.monthExpense),
-                        helper = "-4.5%",
+                        helper = state.monthExpenseTrendText,
                         iconTint = SpendWiseOrange,
                         icon = Icons.Default.TrendingDown,
                         modifier = Modifier.weight(1f)
@@ -218,32 +216,13 @@ fun HomeScreen(
         }
     }
 
-    if (showIncomeDialog) {
-        AlertDialog(
-            onDismissRequest = { showIncomeDialog = false },
-            title = { Text("Add monthly income") },
-            text = {
-                OutlinedTextField(
-                    value = pendingIncomeText,
-                    onValueChange = { pendingIncomeText = it },
-                    label = { Text("Income amount") },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        pendingIncomeText.toDoubleOrNull()?.let(viewModel::updateMonthlyIncome)
-                        showIncomeDialog = false
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showIncomeDialog = false }) {
-                    Text("Cancel")
-                }
+    if (showIncomeSheet) {
+        IncomeBottomSheet(
+            incomeDraftsJson = incomeDrafts,
+            onDismiss = { showIncomeSheet = false },
+            onDraftsChange = viewModel::updateIncomeDrafts,
+            onAddIncome = { amount ->
+                viewModel.addMonthlyIncome(amount)
             }
         )
     }

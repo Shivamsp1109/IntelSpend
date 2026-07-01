@@ -21,7 +21,6 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -36,6 +35,8 @@ class HomeViewModel @Inject constructor(
     private val getSmartInsightsUseCase: GetSmartInsightsUseCase,
     private val syncPendingExpensesUseCase: SyncPendingExpensesUseCase
 ) : ViewModel() {
+    val incomeDrafts: StateFlow<String> = incomePreferenceStore.incomeDrafts
+
     val uiState: StateFlow<HomeUiState> = combine(
         getExpensesUseCase(),
         networkMonitor.isOnline,
@@ -48,6 +49,7 @@ class HomeViewModel @Inject constructor(
                 monthlyIncome = monthlyIncome,
                 totalExpense = expenses.sumOf { it.amount },
                 monthExpense = expenses.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount },
+                monthExpenseTrendText = monthExpenseTrendText(expenses),
                 todayExpense = expenses.filter { DateUtils.isToday(it.date) }.sumOf { it.amount },
                 recentTransactions = expenses.take(5),
                 budgetStatus = getBudgetStatusUseCase(expenses, monthlyIncome),
@@ -69,6 +71,25 @@ class HomeViewModel @Inject constructor(
     fun updateMonthlyIncome(value: Double) {
         incomePreferenceStore.setMonthlyIncome(value)
     }
+
+    fun addMonthlyIncome(value: Double) {
+        incomePreferenceStore.setMonthlyIncome(uiState.value.monthlyIncome + value)
+    }
+
+    fun updateIncomeDrafts(value: String) {
+        incomePreferenceStore.setIncomeDrafts(value)
+    }
+
+    private fun monthExpenseTrendText(expenses: List<Expense>): String {
+        val thisMonth = expenses.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount }
+        val previousMonth = expenses.filter { DateUtils.isPreviousMonth(it.date) }.sumOf { it.amount }
+        if (previousMonth == 0.0) {
+            return if (thisMonth > 0.0) "New" else "0%"
+        }
+        val changePercent = ((thisMonth - previousMonth) / previousMonth) * 100.0
+        val prefix = if (changePercent > 0.0) "+" else ""
+        return "$prefix${changePercent.toInt()}%"
+    }
 }
 
 data class HomeUiState(
@@ -76,6 +97,7 @@ data class HomeUiState(
     val monthlyIncome: Double = 0.0,
     val totalExpense: Double = 0.0,
     val monthExpense: Double = 0.0,
+    val monthExpenseTrendText: String = "0%",
     val todayExpense: Double = 0.0,
     val recentTransactions: List<Expense> = emptyList(),
     val budgetStatus: BudgetStatus = BudgetStatus(0.0, 0.0),
