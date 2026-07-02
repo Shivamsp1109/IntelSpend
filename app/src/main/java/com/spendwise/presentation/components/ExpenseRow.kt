@@ -58,12 +58,16 @@ fun ExpenseRow(
                 Text(
                     expense.title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.Black
+                    color = Color.Black,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Text(
                     "${expense.category.label} - ${DateUtils.formatDate(expense.date)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
             Column(horizontalAlignment = Alignment.End) {

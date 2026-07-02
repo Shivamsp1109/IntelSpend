@@ -13,12 +13,15 @@ object CurrencyRateService {
     private const val BASE_URL = "https://api.frankfurter.app"
     private val cache = ConcurrentHashMap<String, Double>()
 
+    fun dailyCacheDate(): String = LocalDate.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE)
+
     suspend fun rateToInr(currency: String): Double {
         val normalizedCurrency = currency.uppercase()
         if (normalizedCurrency == "INR") return 1.0
 
+        val cacheDate = dailyCacheDate()
         val rateDate = LocalDate.now(ZoneOffset.UTC).minusDays(1).format(DateTimeFormatter.ISO_DATE)
-        val cacheKey = "$rateDate:$normalizedCurrency"
+        val cacheKey = "$cacheDate:$normalizedCurrency"
         return cache[cacheKey] ?: fetchRate(rateDate, normalizedCurrency).also { rate ->
             cache[cacheKey] = rate
         }

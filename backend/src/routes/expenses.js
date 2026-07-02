@@ -19,14 +19,20 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         amount,
         category,
         expense_date,
+        merchant,
+        currency,
+        source,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        title = VALUES(title),
-        amount = VALUES(amount),
-        category = VALUES(category),
+        title        = VALUES(title),
+        amount       = VALUES(amount),
+        category     = VALUES(category),
         expense_date = VALUES(expense_date),
-        updated_at = VALUES(updated_at)`,
+        merchant     = VALUES(merchant),
+        currency     = VALUES(currency),
+        source       = VALUES(source),
+        updated_at   = VALUES(updated_at)`,
       [
         req.user.uid,
         Number(expense.localId),
@@ -34,8 +40,27 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         Number(expense.amount),
         expense.category,
         Number(expense.date),
+        expense.merchant ?? null,
+        expense.currency || 'INR',
+        expense.source   || 'MANUAL',
         Date.now()
       ]
+    );
+
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete('/sync/:localId', requireFirebaseAuth, async (req, res, next) => {
+  try {
+    const localId = req.params.localId;
+    if (!Number.isFinite(Number(localId))) throw createBadRequest('Invalid localId.');
+
+    await pool.execute(
+      `DELETE FROM expenses WHERE uid = ? AND local_id = ?`,
+      [req.user.uid, Number(localId)]
     );
 
     return res.status(204).send();
@@ -52,6 +77,13 @@ function validateExpense(expense) {
   if (!Number.isFinite(Number(expense.amount))) throw createBadRequest('Invalid amount.');
   if (!expense.category || typeof expense.category !== 'string') throw createBadRequest('Invalid category.');
   if (!Number.isFinite(Number(expense.date))) throw createBadRequest('Invalid date.');
+  // v2 optional fields — validated only when present
+  if (expense.merchant !== undefined && expense.merchant !== null && typeof expense.merchant !== 'string')
+    throw createBadRequest('Invalid merchant.');
+  if (expense.currency !== undefined && typeof expense.currency !== 'string')
+    throw createBadRequest('Invalid currency.');
+  if (expense.source !== undefined && typeof expense.source !== 'string')
+    throw createBadRequest('Invalid source.');
 }
 
 async function ensureUserExists(uid, email) {
@@ -74,3 +106,4 @@ function createBadRequest(message) {
 }
 
 module.exports = router;
+

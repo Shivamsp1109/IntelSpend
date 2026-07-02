@@ -6,8 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface ExpenseRepository {
     fun observeExpenses(): Flow<List<Expense>>
-    fun observePagedExpenses(query: String, category: String?): Flow<PagingData<Expense>>
-    fun searchExpenses(query: String, category: String?): Flow<List<Expense>>
+    fun observePagedExpenses(filterState: com.spendwise.domain.model.ExpenseFilterState): Flow<PagingData<Expense>>
     fun observePendingSyncCount(): Flow<Int>
     suspend fun addExpense(expense: Expense)
     suspend fun updateExpense(expense: Expense)

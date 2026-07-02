@@ -1,0 +1,24 @@
+package com.spendwise.domain.model
+
+/**
+ * Domain model for a savings goal.
+ *
+ * @param type          The goal category (e.g. emergency fund, vacation).
+ * @param targetAmount  Total savings target in the user's default currency.
+ * @param targetDate    Epoch-millis deadline for reaching the goal.
+ * @param currentSaved  Amount already saved towards this goal.
+ * @param monthlyContribution Suggested / committed monthly top-up amount.
+ */
+data class Goal(
+    val id: Int = 0,
+    val type: GoalType,
+    val targetAmount: Double,
+    val targetDate: Long,
+    val currentSaved: Double = 0.0,
+    val monthlyContribution: Double = 0.0,
+    val isSynced: Boolean = false
+) {
+    /** Progress as a fraction in [0, 1]. */
+    val progressFraction: Double
+        get() = if (targetAmount > 0) (currentSaved / targetAmount).coerceIn(0.0, 1.0) else 0.0
+}

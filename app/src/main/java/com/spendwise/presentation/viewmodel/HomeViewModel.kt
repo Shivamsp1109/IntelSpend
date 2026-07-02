@@ -5,11 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendwise.domain.model.BudgetStatus
 import com.spendwise.domain.model.Expense
+import com.spendwise.domain.model.Income
 import com.spendwise.domain.model.Insight
 import com.spendwise.domain.model.NetworkSyncStatus
 import com.spendwise.domain.repository.AuthRepository
+import com.spendwise.domain.usecase.AddIncomesUseCase
 import com.spendwise.domain.usecase.GetBudgetStatusUseCase
 import com.spendwise.domain.usecase.GetExpensesUseCase
+import com.spendwise.domain.usecase.GetIncomesUseCase
 import com.spendwise.domain.usecase.GetPendingSyncCountUseCase
 import com.spendwise.domain.usecase.GetSmartInsightsUseCase
 import com.spendwise.domain.usecase.SyncPendingExpensesUseCase
@@ -21,6 +24,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -33,17 +37,21 @@ class HomeViewModel @Inject constructor(
     private val incomePreferenceStore: IncomePreferenceStore,
     private val getBudgetStatusUseCase: GetBudgetStatusUseCase,
     private val getSmartInsightsUseCase: GetSmartInsightsUseCase,
-    private val syncPendingExpensesUseCase: SyncPendingExpensesUseCase
+    private val getIncomesUseCase: GetIncomesUseCase,
+    private val addIncomesUseCase: AddIncomesUseCase,
+    private val syncPendingExpensesUseCase: SyncPendingExpensesUseCase,
+    private val incomeRepository: com.spendwise.domain.repository.IncomeRepository
 ) : ViewModel() {
     val incomeDrafts: StateFlow<String> = incomePreferenceStore.incomeDrafts
 
     val uiState: StateFlow<HomeUiState> = combine(
         getExpensesUseCase(),
+        getIncomesUseCase(),
         networkMonitor.isOnline,
         getPendingSyncCountUseCase(),
-        authRepository.currentUser,
-        incomePreferenceStore.monthlyIncome
-    ) { expenses, isOnline, pendingSyncCount, user, monthlyIncome ->
+        authRepository.currentUser
+    ) { expenses, incomes, isOnline, pendingSyncCount, user ->
+            val monthlyIncome = incomes.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount }
             HomeUiState(
                 userName = user?.name?.takeIf { it.isNotBlank() } ?: "User",
                 monthlyIncome = monthlyIncome,
@@ -61,6 +69,17 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            val legacyIncome = incomePreferenceStore.monthlyIncome.first()
+            if (legacyIncome > 0.0) {
+                addIncomesUseCase(listOf(Income(
+                    title = "Legacy Income",
+                    amount = legacyIncome,
+                    currency = com.spendwise.domain.model.Currency.INR,
+                    source = com.spendwise.domain.model.IncomeSource.MISCELLANEOUS,
+                    date = System.currentTimeMillis()
+                )))
+                incomePreferenceStore.setMonthlyIncome(0.0)
+            }
             runCatching { syncPendingExpensesUseCase() }
                 .onFailure { error ->
                     Log.w(TAG, "Foreground pending expense sync failed.", error)
@@ -68,12 +87,27 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun updateMonthlyIncome(value: Double) {
-        incomePreferenceStore.setMonthlyIncome(value)
-    }
-
-    fun addMonthlyIncome(value: Double) {
-        incomePreferenceStore.setMonthlyIncome(uiState.value.monthlyIncome + value)
+    fun addIncomes(sheetIncomes: List<Income>) {
+        viewModelScope.launch {
+            val currentMonthIncomes = getIncomesUseCase().first().filter { DateUtils.isThisMonth(it.date) }
+            
+            sheetIncomes.forEach { newIncome ->
+                val existing = currentMonthIncomes.find { it.source == newIncome.source && it.title == newIncome.title }
+                if (newIncome.amount > 0) {
+                    if (existing != null) {
+                        if (existing.amount != newIncome.amount || existing.currency != newIncome.currency) {
+                            incomeRepository.updateIncome(existing.copy(amount = newIncome.amount, currency = newIncome.currency))
+                        }
+                    } else {
+                        incomeRepository.addIncome(newIncome)
+                    }
+                } else {
+                    if (existing != null) {
+                        incomeRepository.deleteIncome(existing)
+                    }
+                }
+            }
+        }
     }
 
     fun updateIncomeDrafts(value: String) {

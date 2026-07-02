@@ -14,12 +14,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -42,6 +45,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.presentation.components.AddExpenseBottomSheet
 import com.spendwise.presentation.components.BottomDestination
 import com.spendwise.presentation.components.ExpenseRow
 import com.spendwise.presentation.components.HeaderRow
@@ -54,21 +58,23 @@ import com.spendwise.presentation.viewmodel.ExpenseListViewModel
 @Composable
 fun ExpenseListScreen(
     onHome: () -> Unit,
-    onAddExpense: () -> Unit,
+    onAddExpense: () -> Unit,   // kept for Upload path / future deep link
     onAnalytics: () -> Unit,
     onProfile: () -> Unit,
     viewModel: ExpenseListViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val filterState by viewModel.filterState.collectAsState()
     val expenses = viewModel.pagedExpenses.collectAsLazyPagingItems()
-    var expanded by remember { mutableStateOf(false) }
+    var filterExpanded by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Expense?>(null) }
+    var deleting by remember { mutableStateOf<Expense?>(null) }
+    var showAddSheet by remember { mutableStateOf(false) }
 
     SpendWiseScreen(
         selected = BottomDestination.Transactions,
         onHome = onHome,
         onTransactions = {},
-        onAdd = onAddExpense,
+        onAdd = { showAddSheet = true },
         onAnalytics = onAnalytics,
         onProfile = onProfile
     ) { screenModifier ->
@@ -79,12 +85,15 @@ fun ExpenseListScreen(
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            HeaderRow(title = "Transactions")
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HeaderRow(title = "Transactions", titleColor = Color.White)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 OutlinedTextField(
-                    value = state.query,
-                    onValueChange = viewModel::updateQuery,
-                    label = { Text("Search transactions") },
+                    value = filterState.query,
+                    onValueChange = { q -> viewModel.updateFilterState { it.copy(query = q) } },
+                    placeholder = { Text("Search transactions", color = SpendWiseTextMuted) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     leadingIcon = {
@@ -94,35 +103,38 @@ fun ExpenseListScreen(
                     colors = searchFieldColors()
                 )
                 IconButton(
-                    onClick = { expanded = true },
+                    onClick = { filterExpanded = true },
                     modifier = Modifier.background(Color.White, CircleShape)
                 ) {
                     Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = SpendWisePurple)
                 }
             }
-            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-                Box(Modifier.menuAnchor())
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text("All categories") },
-                        onClick = {
-                            viewModel.updateCategory(null)
-                            expanded = false
-                        }
-                    )
-                    ExpenseCategory.entries.forEach { category ->
-                        DropdownMenuItem(
-                            text = { Text(category.label) },
-                            onClick = {
-                                viewModel.updateCategory(category)
-                                expanded = false
-                            }
-                        )
+            if (filterExpanded) {
+                val distinctCategories by viewModel.distinctCategories.collectAsState()
+                val distinctTitles by viewModel.distinctTitles.collectAsState()
+                val distinctMerchants by viewModel.distinctMerchants.collectAsState()
+                val distinctCurrencies by viewModel.distinctCurrencies.collectAsState()
+
+                com.spendwise.presentation.components.ExpenseSortFilterSheet(
+                    filterState = filterState,
+                    onFilterStateChange = { viewModel.updateFilterState { _ -> it } },
+                    onDismiss = { filterExpanded = false },
+                    distinctCategories = distinctCategories,
+                    distinctTitles = distinctTitles,
+                    distinctMerchants = distinctMerchants,
+                    distinctCurrencies = distinctCurrencies
+                )
+            }
+            if (filterState.categories.isNotEmpty() || filterState.merchants.isNotEmpty() || filterState.titles.isNotEmpty() || filterState.currencies.isNotEmpty() || filterState.startDate != null || filterState.endDate != null) {
+                val filters = (filterState.categories + filterState.merchants + filterState.titles + filterState.currencies).joinToString(", ")
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Filtered by $filters", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { 
+                        viewModel.updateFilterState { it.copy(categories = emptySet(), titles = emptySet(), merchants = emptySet(), currencies = emptySet(), startDate = null, endDate = null) }
+                    }) {
+                        Text("Clear", color = MaterialTheme.colorScheme.error)
                     }
                 }
-            }
-            state.selectedCategory?.let {
-                Text("Filtered by ${it.label}", color = SpendWisePurple, style = MaterialTheme.typography.labelLarge)
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (expenses.loadState.refresh is LoadState.Loading) {
@@ -133,12 +145,33 @@ fun ExpenseListScreen(
                     key = expenses.itemKey { it.id }
                 ) { index ->
                     expenses[index]?.let { expense ->
+                        var menuExpanded by remember { mutableStateOf(false) }
                         ExpenseRow(
                             expense = expense,
                             trailing = {
-                                Row {
-                                    TextButton(onClick = { editing = expense }) { Text("Edit") }
-                                    TextButton(onClick = { viewModel.delete(expense) }) { Text("Delete") }
+                                Box {
+                                    IconButton(onClick = { menuExpanded = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = SpendWiseTextMuted)
+                                    }
+                                    androidx.compose.material3.DropdownMenu(
+                                        expanded = menuExpanded,
+                                        onDismissRequest = { menuExpanded = false }
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Edit") },
+                                            onClick = {
+                                                menuExpanded = false
+                                                editing = expense
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text("Delete") },
+                                            onClick = {
+                                                menuExpanded = false
+                                                deleting = expense
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         )
@@ -155,6 +188,18 @@ fun ExpenseListScreen(
         }
     }
 
+    // ── Add expense bottom sheet ─────────────────────────────────────────────
+    if (showAddSheet) {
+        AddExpenseBottomSheet(
+            onDismiss = { showAddSheet = false },
+            onUpload = {
+                showAddSheet = false
+                onAddExpense()   // hands off to the caller (future OCR/PDF screen)
+            }
+        )
+    }
+
+    // ── Edit dialog ──────────────────────────────────────────────────────────
     editing?.let { expense ->
         EditExpenseDialog(
             expense = expense,
@@ -162,6 +207,18 @@ fun ExpenseListScreen(
             onSave = {
                 viewModel.update(it)
                 editing = null
+            }
+        )
+    }
+
+    // ── Delete confirmation ──────────────────────────────────────────────────
+    deleting?.let { expense ->
+        DeleteConfirmationDialog(
+            expense = expense,
+            onDismiss = { deleting = null },
+            onConfirm = {
+                viewModel.delete(expense)
+                deleting = null
             }
         )
     }
@@ -175,6 +232,7 @@ private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedContainerColor = Color.White
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditExpenseDialog(
     expense: Expense,
@@ -183,25 +241,101 @@ private fun EditExpenseDialog(
 ) {
     var title by remember(expense.id) { mutableStateOf(expense.title) }
     var amount by remember(expense.id) { mutableStateOf(expense.amount.toString()) }
+    var merchant by remember(expense.id) { mutableStateOf(expense.merchant ?: "") }
+    var category by remember(expense.id) { mutableStateOf(expense.category) }
+    var currency by remember(expense.id) { mutableStateOf(expense.currency) }
+    var date by remember(expense.id) { mutableStateOf(expense.date) }
+
+    var catExpanded by remember { mutableStateOf(false) }
+    var curExpanded by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = androidx.compose.material3.rememberDatePickerState(initialSelectedDateMillis = date)
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Expense") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text("Title") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = amount,
-                    onValueChange = { amount = it },
-                    label = { Text("Amount") },
-                    singleLine = true
-                )
-                Spacer(Modifier.padding(1.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Title") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = amount,
+                        onValueChange = { amount = it },
+                        label = { Text("Amount") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = merchant,
+                        onValueChange = { merchant = it },
+                        label = { Text("Merchant") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                item {
+                    ExposedDropdownMenuBox(expanded = catExpanded, onExpandedChange = { catExpanded = it }) {
+                        OutlinedTextField(
+                            value = category.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Category") },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = catExpanded) },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
+                            ExpenseCategory.entries.forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat.label) },
+                                    onClick = {
+                                        category = cat
+                                        catExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    ExposedDropdownMenuBox(expanded = curExpanded, onExpandedChange = { curExpanded = it }) {
+                        OutlinedTextField(
+                            value = currency.code,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Currency") },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = curExpanded) },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        ExposedDropdownMenu(expanded = curExpanded, onDismissRequest = { curExpanded = false }) {
+                            com.spendwise.domain.model.Currency.entries.forEach { cur ->
+                                DropdownMenuItem(
+                                    text = { Text(cur.code) },
+                                    onClick = {
+                                        currency = cur
+                                        curExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    androidx.compose.material3.OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(com.spendwise.util.DateUtils.formatDate(date))
+                    }
+                }
             }
         },
         confirmButton = {
@@ -209,7 +343,14 @@ private fun EditExpenseDialog(
                 onClick = {
                     val parsed = amount.toDoubleOrNull()
                     if (title.isNotBlank() && parsed != null && parsed > 0) {
-                        onSave(expense.copy(title = title.trim(), amount = parsed))
+                        onSave(expense.copy(
+                            title = title.trim(), 
+                            amount = parsed,
+                            merchant = merchant.trim().takeIf { it.isNotBlank() },
+                            category = category,
+                            currency = currency,
+                            date = date
+                        ))
                     }
                 }
             ) {
@@ -220,4 +361,41 @@ private fun EditExpenseDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (showDatePicker) {
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { date = it }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
+        ) {
+            androidx.compose.material3.DatePicker(state = datePickerState)
+        }
+    }
 }
+
+@Composable
+private fun DeleteConfirmationDialog(
+    expense: Expense,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Do you want to delete this transaction?") },
+        text = {
+            ExpenseRow(expense = expense)
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Yes") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("No") }
+        }
+    )
+}
+

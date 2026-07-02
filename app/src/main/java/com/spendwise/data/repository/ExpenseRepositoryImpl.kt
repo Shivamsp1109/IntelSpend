@@ -2,6 +2,7 @@ package com.spendwise.data.repository
 
 import android.util.Log
 import com.spendwise.data.local.ExpenseDao
+import com.spendwise.data.local.ExpenseDeleteSyncEntity
 import com.spendwise.data.local.ExpenseEntity
 import com.spendwise.data.local.toDomain
 import com.spendwise.data.local.toEntity
@@ -25,18 +26,15 @@ class ExpenseRepositoryImpl @Inject constructor(
     override fun observeExpenses(): Flow<List<Expense>> =
         dao.observeExpenses().map { expenses -> expenses.map { it.toDomain() } }
 
-    override fun observePagedExpenses(query: String, category: String?): Flow<PagingData<Expense>> =
+    override fun observePagedExpenses(filterState: com.spendwise.domain.model.ExpenseFilterState): Flow<PagingData<Expense>> =
         Pager(
             config = PagingConfig(
-                pageSize = 40,
-                prefetchDistance = 10,
+                pageSize = filterState.pageSize,
+                prefetchDistance = filterState.pageSize / 2,
                 enablePlaceholders = false
             ),
-            pagingSourceFactory = { dao.pagingSource(query, category) }
+            pagingSourceFactory = { dao.pagingSourceRaw(com.spendwise.data.local.ExpenseQueryBuilder.buildPagingQuery(filterState)) }
         ).flow.map { pagingData -> pagingData.map { it.toDomain() } }
-
-    override fun searchExpenses(query: String, category: String?): Flow<List<Expense>> =
-        dao.searchExpenses(query, category).map { expenses -> expenses.map { it.toDomain() } }
 
     override fun observePendingSyncCount(): Flow<Int> = dao.observePendingSyncCount()
 
@@ -53,13 +51,26 @@ class ExpenseRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteExpense(expense: Expense) {
-        dao.deleteExpense(expense.toEntity())
+        val entity = expense.toEntity()
+        dao.insertPendingDelete(ExpenseDeleteSyncEntity(localId = entity.id))
+        dao.deleteExpense(entity)
+        runCatching {
+            remoteDataSource.deleteExpense(entity.id)
+            dao.deletePendingDelete(entity.id)
+        }.onFailure { error ->
+            Log.w(TAG, "Immediate expense deletion sync failed; enqueuing retry.", error)
+            syncScheduler.enqueueImmediateSync()
+        }
     }
 
     override suspend fun syncPendingExpenses() {
         dao.getPendingSync().forEach { entity ->
             remoteDataSource.upsertExpense(entity)
             dao.updateExpense(entity.copy(isSynced = true))
+        }
+        dao.getPendingDeleteSync().forEach { delete ->
+            remoteDataSource.deleteExpense(delete.localId)
+            dao.deletePendingDelete(delete.localId)
         }
     }
 

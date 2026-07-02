@@ -2,6 +2,7 @@ package com.spendwise.presentation.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Savings
@@ -36,15 +36,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spendwise.presentation.components.ExpenseRow
+import com.spendwise.presentation.components.AddExpenseBottomSheet
 import com.spendwise.presentation.components.BottomDestination
+import com.spendwise.presentation.components.ExpenseRow
 import com.spendwise.presentation.components.HeaderRow
 import com.spendwise.presentation.components.IncomeBottomSheet
 import com.spendwise.presentation.components.PurpleGradient
@@ -60,7 +63,7 @@ import com.spendwise.util.DateUtils
 
 @Composable
 fun HomeScreen(
-    onAddExpense: () -> Unit,
+    onAddExpense: () -> Unit,       // kept for deep link / Upload path
     onViewExpenses: () -> Unit,
     onAnalytics: () -> Unit,
     onProfile: () -> Unit,
@@ -70,13 +73,15 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsState()
     val incomeDrafts by viewModel.incomeDrafts.collectAsState()
     var showIncomeSheet by rememberSaveable { mutableStateOf(false) }
+    // FAB now opens the sheet in-place → HomeViewModel stays subscribed → instant update
+    var showAddExpenseSheet by rememberSaveable { mutableStateOf(false) }
     val userIncome = state.monthlyIncome
 
     SpendWiseScreen(
         selected = BottomDestination.Home,
         onHome = {},
         onTransactions = onViewExpenses,
-        onAdd = onAddExpense,
+        onAdd = { showAddExpenseSheet = true },
         onAnalytics = onAnalytics,
         onProfile = onProfile
     ) {
@@ -105,7 +110,11 @@ fun HomeScreen(
                             subtitleColor = Color.White.copy(alpha = 0.78f),
                             action = {
                                 IconButton(onClick = onNotifications) {
-                                    Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = Color.White)
+                                    Icon(
+                                        Icons.Default.Notifications,
+                                        contentDescription = "Notifications",
+                                        tint = Color.White
+                                    )
                                 }
                             }
                         )
@@ -118,7 +127,11 @@ fun HomeScreen(
             }
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Quick Summary", style = MaterialTheme.typography.titleMedium, color = SpendWisePurple)
+                    Text(
+                        "Quick Summary",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = SpendWisePurple
+                    )
                     Text(
                         DateUtils.formatDate(System.currentTimeMillis()),
                         style = MaterialTheme.typography.titleMedium,
@@ -216,17 +229,31 @@ fun HomeScreen(
         }
     }
 
+    // ── Add expense sheet — stays on same screen so Room flow keeps emitting ─
+    if (showAddExpenseSheet) {
+        AddExpenseBottomSheet(
+            onDismiss = { showAddExpenseSheet = false },
+            onUpload = {
+                showAddExpenseSheet = false
+                onAddExpense()   // Upload path handed to caller
+            }
+        )
+    }
+
+    // ── Income sheet ─────────────────────────────────────────────────────────
     if (showIncomeSheet) {
         IncomeBottomSheet(
             incomeDraftsJson = incomeDrafts,
             onDismiss = { showIncomeSheet = false },
             onDraftsChange = viewModel::updateIncomeDrafts,
-            onAddIncome = { amount ->
-                viewModel.addMonthlyIncome(amount)
-            }
+            onAddIncomes = viewModel::addIncomes
         )
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Private composables
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun BalanceCard(total: String, syncText: String) {
@@ -236,10 +263,7 @@ private fun BalanceCard(total: String, syncText: String) {
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .padding(18.dp)
-        ) {
+        Box(modifier = Modifier.padding(18.dp)) {
             Canvas(modifier = Modifier.matchParentSize()) {
                 drawArc(
                     color = Color.White.copy(alpha = 0.28f),
@@ -252,18 +276,22 @@ private fun BalanceCard(total: String, syncText: String) {
                 )
             }
             Column {
-                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
                             .size(42.dp)
                             .background(Color.White.copy(alpha = 0.18f), CircleShape),
-                        contentAlignment = androidx.compose.ui.Alignment.Center
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Wallet, contentDescription = null, tint = Color.White)
                     }
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("Total Balance", color = Color.White.copy(alpha = 0.76f), style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            "Total Balance",
+                            color = Color.White.copy(alpha = 0.76f),
+                            style = MaterialTheme.typography.labelMedium
+                        )
                         Text(total, color = Color.White, style = MaterialTheme.typography.headlineSmall)
                     }
                 }
@@ -280,7 +308,7 @@ private fun SummaryTile(
     value: String,
     helper: String,
     iconTint: Color,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -294,7 +322,7 @@ private fun SummaryTile(
                 modifier = Modifier
                     .size(32.dp)
                     .background(iconTint.copy(alpha = 0.13f), CircleShape),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                contentAlignment = Alignment.Center
             ) {
                 Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(18.dp))
             }

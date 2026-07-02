@@ -8,7 +8,10 @@ data class ExpenseSyncPayload(
     val title: String,
     val amount: Double,
     val category: String,
-    val date: Long
+    val date: Long,
+    val merchant: String?,
+    val currency: String,
+    val source: String
 )
 
 fun ExpenseEntity.toSyncPayload(uid: String): ExpenseSyncPayload = ExpenseSyncPayload(
@@ -17,5 +20,9 @@ fun ExpenseEntity.toSyncPayload(uid: String): ExpenseSyncPayload = ExpenseSyncPa
     title = title,
     amount = amount,
     category = category,
-    date = date
+    date = date,
+    merchant = merchant,
+    currency = currency,
+    source = source
 )
+

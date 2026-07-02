@@ -64,7 +64,7 @@ fun AddExpenseScreen(
             title = "Add Expense",
             action = {
                 IconButton(onClick = onSaved) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF17102A))
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = SpendWisePurple)
                 }
             }
         )

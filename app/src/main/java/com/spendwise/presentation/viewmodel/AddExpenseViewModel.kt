@@ -2,8 +2,10 @@ package com.spendwise.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.ExpenseSource
 import com.spendwise.domain.usecase.AddExpenseUseCase
 import com.spendwise.util.AppMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,11 +23,11 @@ class AddExpenseViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     fun updateTitle(value: String) {
-        _uiState.value = _uiState.value.copy(title = value)
+        _uiState.value = _uiState.value.copy(title = value, error = null)
     }
 
     fun updateAmount(value: String) {
-        _uiState.value = _uiState.value.copy(amount = value)
+        _uiState.value = _uiState.value.copy(amount = value, error = null)
     }
 
     fun updateCategory(value: ExpenseCategory) {
@@ -34,6 +36,18 @@ class AddExpenseViewModel @Inject constructor(
 
     fun updateDate(value: Long) {
         _uiState.value = _uiState.value.copy(date = value)
+    }
+
+    fun updateMerchant(value: String) {
+        _uiState.value = _uiState.value.copy(merchant = value)
+    }
+
+    fun updateCurrency(value: Currency) {
+        _uiState.value = _uiState.value.copy(currency = value)
+    }
+
+    fun clearForm() {
+        _uiState.value = AddExpenseUiState()
     }
 
     fun save(onSaved: () -> Unit) {
@@ -49,13 +63,18 @@ class AddExpenseViewModel @Inject constructor(
                     title = state.title.trim(),
                     amount = amount,
                     category = state.category,
-                    date = state.date
+                    date = state.date,
+                    merchant = state.merchant.trimOrNull(),
+                    currency = state.currency,
+                    source = ExpenseSource.MANUAL
                 )
             )
             appMetrics.logExpenseSaved(state.category.label, amount)
             onSaved()
         }
     }
+
+    private fun String.trimOrNull() = trim().ifBlank { null }
 }
 
 data class AddExpenseUiState(
@@ -63,5 +82,8 @@ data class AddExpenseUiState(
     val amount: String = "",
     val category: ExpenseCategory = ExpenseCategory.Food,
     val date: Long = System.currentTimeMillis(),
+    val merchant: String = "",
+    val currency: Currency = Currency.INR,
     val error: String? = null
 )
+

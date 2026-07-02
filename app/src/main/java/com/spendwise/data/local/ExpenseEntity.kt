@@ -2,8 +2,10 @@ package com.spendwise.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.ExpenseSource
 
 @Entity(tableName = "expenses")
 data class ExpenseEntity(
@@ -13,7 +15,13 @@ data class ExpenseEntity(
     val amount: Double,
     val category: String,
     val date: Long,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    /** Nullable — added in schema v2; NULL means unknown/not captured. */
+    val merchant: String? = null,
+    /** ISO 4217 code stored as TEXT; defaults to INR for v1 rows. */
+    val currency: String = Currency.INR.code,
+    /** Capture channel; defaults to MANUAL for v1 rows. */
+    val source: String = ExpenseSource.MANUAL.name
 )
 
 fun ExpenseEntity.toDomain(): Expense = Expense(
@@ -22,7 +30,10 @@ fun ExpenseEntity.toDomain(): Expense = Expense(
     amount = amount,
     category = ExpenseCategory.fromLabel(category),
     date = date,
-    isSynced = isSynced
+    isSynced = isSynced,
+    merchant = merchant,
+    currency = Currency.fromCode(currency),
+    source = ExpenseSource.fromLabel(source)
 )
 
 fun Expense.toEntity(): ExpenseEntity = ExpenseEntity(
@@ -31,5 +42,8 @@ fun Expense.toEntity(): ExpenseEntity = ExpenseEntity(
     amount = amount,
     category = category.label,
     date = date,
-    isSynced = isSynced
+    isSynced = isSynced,
+    merchant = merchant,
+    currency = currency.code,
+    source = source.name
 )

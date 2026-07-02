@@ -28,27 +28,24 @@ class ExpenseListViewModel @Inject constructor(
     private val getPagedExpensesUseCase: GetPagedExpensesUseCase,
     private val deleteExpenseUseCase: DeleteExpenseUseCase,
     private val updateExpenseUseCase: UpdateExpenseUseCase,
-    private val appMetrics: AppMetrics
+    private val appMetrics: AppMetrics,
+    private val dao: com.spendwise.data.local.ExpenseDao
 ) : ViewModel() {
-    private val _query = MutableStateFlow("")
-    private val _category = MutableStateFlow<ExpenseCategory?>(null)
-    val query = _query.asStateFlow()
-    val category = _category.asStateFlow()
 
-    val pagedExpenses = combine(_query, _category) { q, c -> q to c }
-        .flatMapLatest { (q, c) -> getPagedExpensesUseCase(q, c?.label) }
+    private val _filterState = MutableStateFlow(com.spendwise.domain.model.ExpenseFilterState())
+    val filterState = _filterState.asStateFlow()
+
+    val pagedExpenses = _filterState
+        .flatMapLatest { state -> getPagedExpensesUseCase(state) }
         .cachedIn(viewModelScope)
 
-    val uiState: StateFlow<ExpenseListUiState> = combine(_query, _category) { q, c ->
-        ExpenseListUiState(query = q, selectedCategory = c)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExpenseListUiState())
+    val distinctTitles = dao.getDistinctTitles().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val distinctCategories = dao.getDistinctCategories().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val distinctMerchants = dao.getDistinctMerchants().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    val distinctCurrencies = dao.getDistinctCurrencies().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    fun updateQuery(value: String) {
-        _query.value = value
-    }
-
-    fun updateCategory(value: ExpenseCategory?) {
-        _category.value = value
+    fun updateFilterState(update: (com.spendwise.domain.model.ExpenseFilterState) -> com.spendwise.domain.model.ExpenseFilterState) {
+        _filterState.value = update(_filterState.value)
     }
 
     fun delete(expense: Expense) {

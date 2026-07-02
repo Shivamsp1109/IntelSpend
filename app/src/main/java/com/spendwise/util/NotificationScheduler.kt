@@ -27,7 +27,7 @@ class NotificationScheduler @Inject constructor(
             request
         )
 
-        val syncRequest = PeriodicWorkRequestBuilder<ExpenseSyncWorker>(6, TimeUnit.HOURS)
+        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(6, TimeUnit.HOURS)
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -35,7 +35,7 @@ class NotificationScheduler @Inject constructor(
             )
             .build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-            "expense_mysql_periodic_sync",
+            "spendwise_periodic_sync",
             ExistingPeriodicWorkPolicy.UPDATE,
             syncRequest
         )

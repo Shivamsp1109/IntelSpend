@@ -5,6 +5,9 @@ const cors = require('cors');
 const { assertDatabaseConnection } = require('./config/db');
 const usersRouter = require('./routes/users');
 const expensesRouter = require('./routes/expenses');
+const incomesRouter = require('./routes/incomes');
+const goalsRouter = require('./routes/goals');
+const recurringRouter = require('./routes/recurring');
 
 const app = express();
 const port = Number(process.env.PORT || 3000);
@@ -22,6 +25,10 @@ app.get('/health', (req, res) => {
 
 app.use('/users', usersRouter);
 app.use('/expenses', expensesRouter);
+app.use('/incomes', incomesRouter);
+app.use('/goals', goalsRouter);
+app.use('/recurring', recurringRouter);
+
 
 app.use((error, req, res, next) => {
   const status = error.status || 500;
