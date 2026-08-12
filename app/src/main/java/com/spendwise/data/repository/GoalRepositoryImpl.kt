@@ -2,6 +2,7 @@ package com.spendwise.data.repository
 
 import android.util.Log
 import com.spendwise.data.local.GoalDao
+import com.spendwise.data.local.GoalEntity
 import com.spendwise.data.local.toDomain
 import com.spendwise.data.local.toEntity
 import com.spendwise.data.remote.MySqlGoalDataSource
@@ -49,7 +50,7 @@ class GoalRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun syncGoalOrLog(entity: com.spendwise.data.local.GoalEntity) {
+    private suspend fun syncGoalOrLog(entity: GoalEntity) {
         runCatching {
             remoteDataSource.upsertGoal(entity)
             dao.updateGoal(entity.copy(isSynced = true))

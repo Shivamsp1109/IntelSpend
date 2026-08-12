@@ -8,8 +8,6 @@ class AddIncomesUseCase @Inject constructor(
     private val repository: IncomeRepository
 ) {
     suspend operator fun invoke(incomes: List<Income>) {
-        incomes.forEach { income ->
-            repository.addIncome(income)
-        }
+        repository.addIncomesBatch(incomes)
     }
 }

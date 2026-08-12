@@ -1,0 +1,310 @@
+{
+ "note": "Two pages, header repeated on each. Rows must not merge across the page break.",
+ "fullText": "Date Narration Withdrawal Deposit Balance\n12/01/2026 UPI/AMAZON PAY/order 1,299.00 98,701.00\n14/01/2026 POS/SWIGGY/BANGALORE 456.50 98,244.50\n15/01/2026 NEFT/ACME PAYROLL/SALARY 85,000.00 183,244.50\nDate Narration Withdrawal Deposit Balance\n18/01/2026 UPI/UBER INDIA/trip 289.00 182,955.50\n21/01/2026 POS/RELIANCE FRESH/MUMBAI 2,340.75 180,614.75",
+ "words": [
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 141.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 90.0,
+   "right": 496.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 86.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AMAZON",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 146.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "PAY/order",
+   "left": 150.6,
+   "top": 110.0,
+   "right": 192.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 393.2,
+   "top": 110.0,
+   "right": 430.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "98,701.00",
+   "left": 524.6,
+   "top": 110.0,
+   "right": 566.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "14/01/2026",
+   "left": 40.0,
+   "top": 126.0,
+   "right": 86.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "POS/SWIGGY/BANGALORE",
+   "left": 100.0,
+   "top": 126.0,
+   "right": 192.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "456.50",
+   "left": 402.4,
+   "top": 126.0,
+   "right": 430.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "98,244.50",
+   "left": 524.6,
+   "top": 126.0,
+   "right": 566.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "15/01/2026",
+   "left": 40.0,
+   "top": 142.0,
+   "right": 86.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "NEFT/ACME",
+   "left": 100.0,
+   "top": 142.0,
+   "right": 141.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "PAYROLL/SALARY",
+   "left": 146.0,
+   "top": 142.0,
+   "right": 210.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "85,000.00",
+   "left": 454.6,
+   "top": 142.0,
+   "right": 496.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "183,244.50",
+   "left": 520.0,
+   "top": 142.0,
+   "right": 566.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 2
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 141.4,
+   "bottom": 99.0,
+   "page": 2
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 2
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 90.0,
+   "right": 496.0,
+   "bottom": 99.0,
+   "page": 2
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 2
+  },
+  {
+   "text": "18/01/2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 86.0,
+   "bottom": 119.0,
+   "page": 2
+  },
+  {
+   "text": "UPI/UBER",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 136.8,
+   "bottom": 119.0,
+   "page": 2
+  },
+  {
+   "text": "INDIA/trip",
+   "left": 141.4,
+   "top": 110.0,
+   "right": 187.4,
+   "bottom": 119.0,
+   "page": 2
+  },
+  {
+   "text": "289.00",
+   "left": 402.4,
+   "top": 110.0,
+   "right": 430.0,
+   "bottom": 119.0,
+   "page": 2
+  },
+  {
+   "text": "182,955.50",
+   "left": 520.0,
+   "top": 110.0,
+   "right": 566.0,
+   "bottom": 119.0,
+   "page": 2
+  },
+  {
+   "text": "21/01/2026",
+   "left": 40.0,
+   "top": 126.0,
+   "right": 86.0,
+   "bottom": 135.0,
+   "page": 2
+  },
+  {
+   "text": "POS/RELIANCE",
+   "left": 100.0,
+   "top": 126.0,
+   "right": 155.2,
+   "bottom": 135.0,
+   "page": 2
+  },
+  {
+   "text": "FRESH/MUMBAI",
+   "left": 159.8,
+   "top": 126.0,
+   "right": 215.0,
+   "bottom": 135.0,
+   "page": 2
+  },
+  {
+   "text": "2,340.75",
+   "left": 393.2,
+   "top": 126.0,
+   "right": 430.0,
+   "bottom": 135.0,
+   "page": 2
+  },
+  {
+   "text": "180,614.75",
+   "left": 520.0,
+   "top": 126.0,
+   "right": 566.0,
+   "bottom": 135.0,
+   "page": 2
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-14",
+   "amount": 456.5,
+   "type": "DEBIT",
+   "merchantContains": "SWIGGY"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "ACME"
+  },
+  {
+   "date": "2026-01-18",
+   "amount": 289.0,
+   "type": "DEBIT",
+   "merchantContains": "UBER"
+  },
+  {
+   "date": "2026-01-21",
+   "amount": 2340.75,
+   "type": "DEBIT",
+   "merchantContains": "RELIANCE"
+  }
+ ]
+}

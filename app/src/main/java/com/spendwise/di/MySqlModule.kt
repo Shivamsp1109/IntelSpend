@@ -1,6 +1,7 @@
 package com.spendwise.di
 
 import com.spendwise.BuildConfig
+import com.spendwise.data.remote.ExtractionApi
 import com.spendwise.data.remote.MySqlExpenseApi
 import com.spendwise.data.remote.MySqlGoalApi
 import com.spendwise.data.remote.MySqlIncomeApi
@@ -67,5 +68,10 @@ object MySqlModule {
     @Singleton
     fun provideMySqlRecurringApi(retrofit: Retrofit): MySqlRecurringApi =
         retrofit.create(MySqlRecurringApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideExtractionApi(retrofit: Retrofit): ExtractionApi =
+        retrofit.create(ExtractionApi::class.java)
 }
 

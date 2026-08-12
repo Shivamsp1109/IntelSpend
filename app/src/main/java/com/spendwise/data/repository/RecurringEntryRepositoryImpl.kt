@@ -1,6 +1,7 @@
 package com.spendwise.data.repository
 
 import android.util.Log
+import com.spendwise.data.local.RecurringEntity
 import com.spendwise.data.local.RecurringEntryDao
 import com.spendwise.data.local.RecurringExpenseCrossRef
 import com.spendwise.data.local.toDomain
@@ -69,9 +70,7 @@ class RecurringEntryRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun syncRecurringOrLog(
-        entity: com.spendwise.data.local.RecurringEntity
-    ) {
+    private suspend fun syncRecurringOrLog(entity: RecurringEntity) {
         runCatching {
             remoteDataSource.upsertRecurring(entity)
             dao.updateRecurring(entity.copy(isSynced = true))

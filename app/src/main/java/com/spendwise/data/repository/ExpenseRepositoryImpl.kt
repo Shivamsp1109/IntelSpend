@@ -44,6 +44,12 @@ class ExpenseRepositoryImpl @Inject constructor(
         syncExpenseOrEnqueueRetry(inserted)
     }
 
+    override suspend fun addExpensesBatch(expenses: List<Expense>) {
+        val entities = expenses.map { it.copy(isSynced = false).toEntity() }
+        dao.insertExpenses(entities)
+        syncScheduler.enqueueImmediateSync()
+    }
+
     override suspend fun updateExpense(expense: Expense) {
         val entity = expense.copy(isSynced = false).toEntity()
         dao.updateExpense(entity)

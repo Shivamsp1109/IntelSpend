@@ -1,0 +1,178 @@
+{
+ "note": "The running balance goes negative. Reading balances as magnitudes breaks the chain exactly where the account is overdrawn.",
+ "fullText": "Date Narration Withdrawal Deposit Balance\n12/01/2026 UPI/AMAZON PAY/order 1,299.00 48,701.00\n14/01/2026 POS/CROMA/television 62,000.00 -13,299.00\n16/01/2026 NEFT/ACME PAYROLL/SALARY 85,000.00 71,701.00",
+ "words": [
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 141.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 90.0,
+   "right": 496.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 86.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AMAZON",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 146.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "PAY/order",
+   "left": 150.6,
+   "top": 110.0,
+   "right": 192.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 393.2,
+   "top": 110.0,
+   "right": 430.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "48,701.00",
+   "left": 524.6,
+   "top": 110.0,
+   "right": 566.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "14/01/2026",
+   "left": 40.0,
+   "top": 126.0,
+   "right": 86.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "POS/CROMA/television",
+   "left": 100.0,
+   "top": 126.0,
+   "right": 192.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "62,000.00",
+   "left": 388.6,
+   "top": 126.0,
+   "right": 430.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "-13,299.00",
+   "left": 520.0,
+   "top": 126.0,
+   "right": 566.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "16/01/2026",
+   "left": 40.0,
+   "top": 142.0,
+   "right": 86.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "NEFT/ACME",
+   "left": 100.0,
+   "top": 142.0,
+   "right": 141.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "PAYROLL/SALARY",
+   "left": 146.0,
+   "top": 142.0,
+   "right": 210.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "85,000.00",
+   "left": 454.6,
+   "top": 142.0,
+   "right": 496.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "71,701.00",
+   "left": 524.6,
+   "top": 142.0,
+   "right": 566.0,
+   "bottom": 151.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-14",
+   "amount": 62000.0,
+   "type": "DEBIT",
+   "merchantContains": "CROMA"
+  },
+  {
+   "date": "2026-01-16",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "ACME"
+  }
+ ]
+}

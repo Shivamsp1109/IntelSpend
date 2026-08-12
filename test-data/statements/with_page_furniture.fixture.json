@@ -1,0 +1,574 @@
+{
+ "note": "Header block, opening/closing balance lines, totals and a footer. None of these are transactions.",
+ "fullText": "HDFC BANK LIMITED\nStatement Period 01/01/2026 to 31/01/2026\nAccount Number 50100123456789 IFSC HDFC0001234\nOpening Balance 100,000.00\nDate Narration Withdrawal Deposit Balance\n12/01/2026 UPI/AMAZON PAY/9876543210/Order 1,299.00 98,701.00\n14/01/2026 POS/SWIGGY/BANGALORE 456.50 98,244.50\n15/01/2026 NEFT/ACME PAYROLL/SALARY JAN 85,000.00 183,244.50\n18/01/2026 UPI/UBER INDIA/trip fare 289.00 182,955.50\n21/01/2026 POS/RELIANCE FRESH/MUMBAI 2,340.75 180,614.75\nClosing Balance 171,528.75\nTotal Debits 6,360.50 Total Credits 85,000.00\nPage 1 of 1\nThis is a computer generated statement 31/01/2026",
+ "words": [
+  {
+   "text": "HDFC",
+   "left": 40.0,
+   "top": 40.0,
+   "right": 58.4,
+   "bottom": 49.0,
+   "page": 1
+  },
+  {
+   "text": "BANK",
+   "left": 63.0,
+   "top": 40.0,
+   "right": 81.4,
+   "bottom": 49.0,
+   "page": 1
+  },
+  {
+   "text": "LIMITED",
+   "left": 86.0,
+   "top": 40.0,
+   "right": 118.2,
+   "bottom": 49.0,
+   "page": 1
+  },
+  {
+   "text": "Statement",
+   "left": 40.0,
+   "top": 52.0,
+   "right": 81.4,
+   "bottom": 61.0,
+   "page": 1
+  },
+  {
+   "text": "Period",
+   "left": 86.0,
+   "top": 52.0,
+   "right": 113.6,
+   "bottom": 61.0,
+   "page": 1
+  },
+  {
+   "text": "01/01/2026",
+   "left": 118.2,
+   "top": 52.0,
+   "right": 164.2,
+   "bottom": 61.0,
+   "page": 1
+  },
+  {
+   "text": "to",
+   "left": 168.8,
+   "top": 52.0,
+   "right": 178.0,
+   "bottom": 61.0,
+   "page": 1
+  },
+  {
+   "text": "31/01/2026",
+   "left": 182.6,
+   "top": 52.0,
+   "right": 228.6,
+   "bottom": 61.0,
+   "page": 1
+  },
+  {
+   "text": "Account",
+   "left": 40.0,
+   "top": 64.0,
+   "right": 72.2,
+   "bottom": 73.0,
+   "page": 1
+  },
+  {
+   "text": "Number",
+   "left": 76.8,
+   "top": 64.0,
+   "right": 104.4,
+   "bottom": 73.0,
+   "page": 1
+  },
+  {
+   "text": "50100123456789",
+   "left": 109.0,
+   "top": 64.0,
+   "right": 173.4,
+   "bottom": 73.0,
+   "page": 1
+  },
+  {
+   "text": "IFSC",
+   "left": 178.0,
+   "top": 64.0,
+   "right": 196.4,
+   "bottom": 73.0,
+   "page": 1
+  },
+  {
+   "text": "HDFC0001234",
+   "left": 201.0,
+   "top": 64.0,
+   "right": 251.6,
+   "bottom": 73.0,
+   "page": 1
+  },
+  {
+   "text": "Opening",
+   "left": 40.0,
+   "top": 76.0,
+   "right": 72.2,
+   "bottom": 85.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 76.8,
+   "top": 76.0,
+   "right": 109.0,
+   "bottom": 85.0,
+   "page": 1
+  },
+  {
+   "text": "100,000.00",
+   "left": 113.6,
+   "top": 76.0,
+   "right": 159.6,
+   "bottom": 85.0,
+   "page": 1
+  },
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 96.0,
+   "right": 58.4,
+   "bottom": 105.0,
+   "page": 1
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 96.0,
+   "right": 141.4,
+   "bottom": 105.0,
+   "page": 1
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 96.0,
+   "right": 430.0,
+   "bottom": 105.0,
+   "page": 1
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 96.0,
+   "right": 496.0,
+   "bottom": 105.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 96.0,
+   "right": 566.0,
+   "bottom": 105.0,
+   "page": 1
+  },
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 116.0,
+   "right": 86.0,
+   "bottom": 125.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AMAZON",
+   "left": 100.0,
+   "top": 116.0,
+   "right": 146.0,
+   "bottom": 125.0,
+   "page": 1
+  },
+  {
+   "text": "PAY/9876543210/Order",
+   "left": 150.6,
+   "top": 116.0,
+   "right": 242.6,
+   "bottom": 125.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 393.2,
+   "top": 116.0,
+   "right": 430.0,
+   "bottom": 125.0,
+   "page": 1
+  },
+  {
+   "text": "98,701.00",
+   "left": 524.6,
+   "top": 116.0,
+   "right": 566.0,
+   "bottom": 125.0,
+   "page": 1
+  },
+  {
+   "text": "14/01/2026",
+   "left": 40.0,
+   "top": 132.0,
+   "right": 86.0,
+   "bottom": 141.0,
+   "page": 1
+  },
+  {
+   "text": "POS/SWIGGY/BANGALORE",
+   "left": 100.0,
+   "top": 132.0,
+   "right": 192.0,
+   "bottom": 141.0,
+   "page": 1
+  },
+  {
+   "text": "456.50",
+   "left": 402.4,
+   "top": 132.0,
+   "right": 430.0,
+   "bottom": 141.0,
+   "page": 1
+  },
+  {
+   "text": "98,244.50",
+   "left": 524.6,
+   "top": 132.0,
+   "right": 566.0,
+   "bottom": 141.0,
+   "page": 1
+  },
+  {
+   "text": "15/01/2026",
+   "left": 40.0,
+   "top": 148.0,
+   "right": 86.0,
+   "bottom": 157.0,
+   "page": 1
+  },
+  {
+   "text": "NEFT/ACME",
+   "left": 100.0,
+   "top": 148.0,
+   "right": 141.4,
+   "bottom": 157.0,
+   "page": 1
+  },
+  {
+   "text": "PAYROLL/SALARY",
+   "left": 146.0,
+   "top": 148.0,
+   "right": 210.4,
+   "bottom": 157.0,
+   "page": 1
+  },
+  {
+   "text": "JAN",
+   "left": 215.0,
+   "top": 148.0,
+   "right": 228.8,
+   "bottom": 157.0,
+   "page": 1
+  },
+  {
+   "text": "85,000.00",
+   "left": 454.6,
+   "top": 148.0,
+   "right": 496.0,
+   "bottom": 157.0,
+   "page": 1
+  },
+  {
+   "text": "183,244.50",
+   "left": 520.0,
+   "top": 148.0,
+   "right": 566.0,
+   "bottom": 157.0,
+   "page": 1
+  },
+  {
+   "text": "18/01/2026",
+   "left": 40.0,
+   "top": 164.0,
+   "right": 86.0,
+   "bottom": 173.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/UBER",
+   "left": 100.0,
+   "top": 164.0,
+   "right": 136.8,
+   "bottom": 173.0,
+   "page": 1
+  },
+  {
+   "text": "INDIA/trip",
+   "left": 141.4,
+   "top": 164.0,
+   "right": 187.4,
+   "bottom": 173.0,
+   "page": 1
+  },
+  {
+   "text": "fare",
+   "left": 192.0,
+   "top": 164.0,
+   "right": 210.4,
+   "bottom": 173.0,
+   "page": 1
+  },
+  {
+   "text": "289.00",
+   "left": 402.4,
+   "top": 164.0,
+   "right": 430.0,
+   "bottom": 173.0,
+   "page": 1
+  },
+  {
+   "text": "182,955.50",
+   "left": 520.0,
+   "top": 164.0,
+   "right": 566.0,
+   "bottom": 173.0,
+   "page": 1
+  },
+  {
+   "text": "21/01/2026",
+   "left": 40.0,
+   "top": 180.0,
+   "right": 86.0,
+   "bottom": 189.0,
+   "page": 1
+  },
+  {
+   "text": "POS/RELIANCE",
+   "left": 100.0,
+   "top": 180.0,
+   "right": 155.2,
+   "bottom": 189.0,
+   "page": 1
+  },
+  {
+   "text": "FRESH/MUMBAI",
+   "left": 159.8,
+   "top": 180.0,
+   "right": 215.0,
+   "bottom": 189.0,
+   "page": 1
+  },
+  {
+   "text": "2,340.75",
+   "left": 393.2,
+   "top": 180.0,
+   "right": 430.0,
+   "bottom": 189.0,
+   "page": 1
+  },
+  {
+   "text": "180,614.75",
+   "left": 520.0,
+   "top": 180.0,
+   "right": 566.0,
+   "bottom": 189.0,
+   "page": 1
+  },
+  {
+   "text": "Closing",
+   "left": 40.0,
+   "top": 206.0,
+   "right": 72.2,
+   "bottom": 215.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 76.8,
+   "top": 206.0,
+   "right": 109.0,
+   "bottom": 215.0,
+   "page": 1
+  },
+  {
+   "text": "171,528.75",
+   "left": 113.6,
+   "top": 206.0,
+   "right": 159.6,
+   "bottom": 215.0,
+   "page": 1
+  },
+  {
+   "text": "Total",
+   "left": 40.0,
+   "top": 218.0,
+   "right": 63.0,
+   "bottom": 227.0,
+   "page": 1
+  },
+  {
+   "text": "Debits",
+   "left": 67.6,
+   "top": 218.0,
+   "right": 95.2,
+   "bottom": 227.0,
+   "page": 1
+  },
+  {
+   "text": "6,360.50",
+   "left": 99.8,
+   "top": 218.0,
+   "right": 136.6,
+   "bottom": 227.0,
+   "page": 1
+  },
+  {
+   "text": "Total",
+   "left": 141.2,
+   "top": 218.0,
+   "right": 164.2,
+   "bottom": 227.0,
+   "page": 1
+  },
+  {
+   "text": "Credits",
+   "left": 168.8,
+   "top": 218.0,
+   "right": 201.0,
+   "bottom": 227.0,
+   "page": 1
+  },
+  {
+   "text": "85,000.00",
+   "left": 205.6,
+   "top": 218.0,
+   "right": 247.0,
+   "bottom": 227.0,
+   "page": 1
+  },
+  {
+   "text": "Page",
+   "left": 40.0,
+   "top": 230.0,
+   "right": 58.4,
+   "bottom": 239.0,
+   "page": 1
+  },
+  {
+   "text": "1",
+   "left": 63.0,
+   "top": 230.0,
+   "right": 67.6,
+   "bottom": 239.0,
+   "page": 1
+  },
+  {
+   "text": "of",
+   "left": 72.2,
+   "top": 230.0,
+   "right": 81.4,
+   "bottom": 239.0,
+   "page": 1
+  },
+  {
+   "text": "1",
+   "left": 86.0,
+   "top": 230.0,
+   "right": 90.6,
+   "bottom": 239.0,
+   "page": 1
+  },
+  {
+   "text": "This",
+   "left": 40.0,
+   "top": 242.0,
+   "right": 58.4,
+   "bottom": 251.0,
+   "page": 1
+  },
+  {
+   "text": "is",
+   "left": 63.0,
+   "top": 242.0,
+   "right": 72.2,
+   "bottom": 251.0,
+   "page": 1
+  },
+  {
+   "text": "a",
+   "left": 76.8,
+   "top": 242.0,
+   "right": 81.4,
+   "bottom": 251.0,
+   "page": 1
+  },
+  {
+   "text": "computer",
+   "left": 86.0,
+   "top": 242.0,
+   "right": 122.8,
+   "bottom": 251.0,
+   "page": 1
+  },
+  {
+   "text": "generated",
+   "left": 127.4,
+   "top": 242.0,
+   "right": 168.8,
+   "bottom": 251.0,
+   "page": 1
+  },
+  {
+   "text": "statement",
+   "left": 173.4,
+   "top": 242.0,
+   "right": 214.8,
+   "bottom": 251.0,
+   "page": 1
+  },
+  {
+   "text": "31/01/2026",
+   "left": 219.4,
+   "top": 242.0,
+   "right": 265.4,
+   "bottom": 251.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-14",
+   "amount": 456.5,
+   "type": "DEBIT",
+   "merchantContains": "SWIGGY"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "ACME"
+  },
+  {
+   "date": "2026-01-18",
+   "amount": 289.0,
+   "type": "DEBIT",
+   "merchantContains": "UBER"
+  },
+  {
+   "date": "2026-01-21",
+   "amount": 2340.75,
+   "type": "DEBIT",
+   "merchantContains": "RELIANCE"
+  }
+ ]
+}

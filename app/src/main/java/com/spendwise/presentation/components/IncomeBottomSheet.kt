@@ -29,7 +29,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -62,8 +62,6 @@ import androidx.compose.ui.unit.dp
 import com.spendwise.util.CurrencyFormatter
 import com.spendwise.util.CurrencyRateService
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
 import com.spendwise.domain.model.Income
 import com.spendwise.domain.model.IncomeSource
 import com.spendwise.domain.model.Currency
@@ -82,22 +80,18 @@ private val currencies = listOf("INR", "USD", "EUR", "GBP", "AED", "CAD", "AUD",
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IncomeBottomSheet(
-    incomeDraftsJson: String,
+    currentMonthIncomes: List<Income>,
     onDismiss: () -> Unit,
-    onDraftsChange: (String) -> Unit,
-    onAddIncomes: (List<Income>) -> Unit
+    onSaveIncomes: (List<Income>) -> Unit
 ) {
     var selectedSector by remember { mutableStateOf<IncomeSector?>(null) }
-    val draftState = remember { IncomeDraftState.fromJson(incomeDraftsJson) }
+    val draftState = remember(currentMonthIncomes) { IncomeDraftState.fromDatabase(currentMonthIncomes) }
     val rates = remember {
         mutableStateMapOf("INR" to 1.0).apply {
             putAll(draftState.currentRates())
         }
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    fun persistDrafts() {
-        onDraftsChange(draftState.toJson())
-    }
 
     LaunchedEffect(Unit) {
         draftState.usedCurrencies()
@@ -107,7 +101,6 @@ fun IncomeBottomSheet(
                     .onSuccess { rate ->
                         draftState.setRate(currency, rate)
                         rates[currency] = rate
-                        persistDrafts()
                     }
             }
     }
@@ -128,16 +121,13 @@ fun IncomeBottomSheet(
                     sector = sector,
                     draftState = draftState,
                     rates = rates,
-                    onDraftsChange = ::persistDrafts,
                     onBack = { selectedSector = null },
                     onClose = onDismiss,
                     onAddIncome = {
                         val txs = draftState.generateTransactions()
-                        if (txs.isNotEmpty()) {
-                            onAddIncomes(txs)
-                            persistDrafts()
-                        }
+                        onSaveIncomes(txs)
                         selectedSector = null
+                        onDismiss()
                     }
                 )
             } ?: IncomeSectorContent(
@@ -211,7 +201,6 @@ private fun IncomeDetailContent(
     sector: IncomeSector,
     draftState: IncomeDraftState,
     rates: MutableMap<String, Double>,
-    onDraftsChange: () -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit,
     onAddIncome: () -> Unit
@@ -248,7 +237,6 @@ private fun IncomeDetailContent(
             rates = rates,
             rateMessage = rateMessage,
             onRateMessageChange = { rateMessage = it },
-            onDraftsChange = onDraftsChange,
             onAddIncome = onAddIncome
         )
     } else {
@@ -258,7 +246,6 @@ private fun IncomeDetailContent(
             rates = rates,
             rateMessage = rateMessage,
             onRateMessageChange = { rateMessage = it },
-            onDraftsChange = onDraftsChange,
             onAddIncome = onAddIncome
         )
     }
@@ -271,7 +258,6 @@ private fun StandardIncomeForm(
     rates: MutableMap<String, Double>,
     rateMessage: String?,
     onRateMessageChange: (String?) -> Unit,
-    onDraftsChange: () -> Unit,
     onAddIncome: () -> Unit
 ) {
     val total = entries.sumOf { it.amountInInr(rates) }
@@ -289,13 +275,10 @@ private fun StandardIncomeForm(
                 rates = rates,
                 onAmountChange = {
                     entry.amount = it
-                    onDraftsChange()
                 },
                 onCurrencyChange = {
                     entry.currency = it
-                    onDraftsChange()
                 },
-                onDraftsChange = onDraftsChange,
                 onRateMessageChange = onRateMessageChange
             )
         }
@@ -314,7 +297,6 @@ private fun MiscellaneousIncomeForm(
     rates: MutableMap<String, Double>,
     rateMessage: String?,
     onRateMessageChange: (String?) -> Unit,
-    onDraftsChange: () -> Unit,
     onAddIncome: () -> Unit
 ) {
     val context = LocalContext.current
@@ -336,7 +318,6 @@ private fun MiscellaneousIncomeForm(
                             value = entry.type,
                             onValueChange = {
                                 entry.type = it
-                                onDraftsChange()
                             },
                             label = { Text("Income type") },
                             modifier = Modifier.weight(1f),
@@ -355,7 +336,6 @@ private fun MiscellaneousIncomeForm(
                                 if (entries.isEmpty()) {
                                     entries.add(MiscIncomeEntry())
                                 }
-                                onDraftsChange()
                             }
                         ) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete income type", tint = MaterialTheme.colorScheme.error)
@@ -368,13 +348,10 @@ private fun MiscellaneousIncomeForm(
                         rates = rates,
                         onAmountChange = {
                             entry.amount = it
-                            onDraftsChange()
                         },
                         onCurrencyChange = {
                             entry.currency = it
-                            onDraftsChange()
                         },
-                        onDraftsChange = onDraftsChange,
                         onRateMessageChange = onRateMessageChange,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -384,7 +361,6 @@ private fun MiscellaneousIncomeForm(
         item {
             TextButton(onClick = {
                 entries.add(MiscIncomeEntry())
-                onDraftsChange()
             }) {
                 Icon(Icons.Default.Add, contentDescription = null)
                 Spacer(Modifier.width(6.dp))
@@ -406,31 +382,39 @@ private fun IncomeInputRow(
     rates: MutableMap<String, Double>,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
-    onDraftsChange: () -> Unit,
     onRateMessageChange: (String?) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                label,
+                modifier = Modifier.weight(0.85f),
+                color = Color(0xFF17102A),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold
+            )
+            CurrencyAmountInput(
+                amount = amount,
+                currency = currency,
+                draftState = draftState,
+                rates = rates,
+                onAmountChange = onAmountChange,
+                onCurrencyChange = onCurrencyChange,
+                onRateMessageChange = onRateMessageChange,
+                modifier = Modifier.weight(1.15f)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
         Text(
-            label,
-            modifier = Modifier.weight(0.85f),
-            color = Color(0xFF17102A),
-            style = MaterialTheme.typography.bodyMedium
+            text = "Total $label income this month. Set to 0 to remove this income for the month.",
+            style = MaterialTheme.typography.labelSmall,
+            color = SpendWiseTextMuted
         )
-        CurrencyAmountInput(
-            amount = amount,
-            currency = currency,
-            draftState = draftState,
-            rates = rates,
-            onAmountChange = onAmountChange,
-            onCurrencyChange = onCurrencyChange,
-            onDraftsChange = onDraftsChange,
-            onRateMessageChange = onRateMessageChange,
-            modifier = Modifier.weight(1.15f)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
     }
 }
 
@@ -442,7 +426,6 @@ private fun CurrencyAmountInput(
     rates: MutableMap<String, Double>,
     onAmountChange: (String) -> Unit,
     onCurrencyChange: (String) -> Unit,
-    onDraftsChange: () -> Unit,
     onRateMessageChange: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -482,7 +465,6 @@ private fun CurrencyAmountInput(
                                         .onSuccess {
                                             draftState.setRate(option, it)
                                             rates[option] = it
-                                            onDraftsChange()
                                             onRateMessageChange("Stored today's $option to INR rate.")
                                         }
                                         .onFailure {
@@ -500,7 +482,7 @@ private fun CurrencyAmountInput(
                 }
             }
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
                 .height(42.dp)
                 .width(1.dp),
@@ -521,7 +503,6 @@ private fun CurrencyAmountInput(
             colors = incomeTextFieldColors()
         )
     }
-
 }
 
 @Composable
@@ -564,11 +545,10 @@ private fun AddIncomeButton(
 ) {
     Button(
         onClick = onAddIncome,
-        enabled = total > 0.0,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Text("Add Income")
+        Text("Save Income")
     }
 }
 
@@ -581,8 +561,10 @@ private data class IncomeSector(
 private class IncomeAmountEntry(
     val label: String,
     amount: String = "",
-    currency: String = "INR"
+    currency: String = "INR",
+    id: Int = 0
 ) {
+    var id by mutableStateOf(id)
     var amount by mutableStateOf(amount)
     var currency by mutableStateOf(currency)
 
@@ -593,6 +575,7 @@ private class IncomeAmountEntry(
 
 private class MiscIncomeEntry {
     val id = System.nanoTime()
+    var databaseId by mutableStateOf(0)
     var type by mutableStateOf("")
     var amount by mutableStateOf("")
     var currency by mutableStateOf("INR")
@@ -658,33 +641,32 @@ private class IncomeDraftState(
             ?.rate
     }
 
-    fun totalInInr(rates: Map<String, Double>): Double {
-        return standardEntries.values.flatten().sumOf { it.amountInInr(rates) } +
-            miscellaneousEntries.sumOf { it.amountInInr(rates) }
-    }
-
     fun generateTransactions(): List<Income> {
         val now = System.currentTimeMillis()
         val list = mutableListOf<Income>()
         standardEntries.forEach { (sectorTitle, entries) ->
             entries.forEach { entry ->
                 val amount = entry.amount.toDoubleOrNull() ?: 0.0
-                val sourceEnum = IncomeSource.entries.find { 
-                    it.label == entry.label && it.sector.displayName == sectorTitle 
-                } ?: IncomeSource.MISCELLANEOUS
-                list.add(Income(
-                    title = entry.label,
-                    amount = amount,
-                    currency = Currency.fromCode(entry.currency),
-                    source = sourceEnum,
-                    date = now
-                ))
+                if (amount > 0.0) {
+                    val sourceEnum = IncomeSource.entries.find { 
+                        it.label == entry.label && it.sector.displayName == sectorTitle 
+                    } ?: IncomeSource.MISCELLANEOUS
+                    list.add(Income(
+                        id = entry.id,
+                        title = entry.label,
+                        amount = amount,
+                        currency = Currency.fromCode(entry.currency),
+                        source = sourceEnum,
+                        date = now
+                    ))
+                }
             }
         }
         miscellaneousEntries.forEach { entry ->
             val amount = entry.amount.toDoubleOrNull() ?: 0.0
-            if (entry.type.isNotBlank()) {
+            if (amount > 0.0 && entry.type.isNotBlank()) {
                 list.add(Income(
+                    id = entry.databaseId,
                     title = entry.type,
                     amount = amount,
                     currency = Currency.fromCode(entry.currency),
@@ -697,104 +679,47 @@ private class IncomeDraftState(
         return list
     }
 
-    fun clearAmounts() {
-        standardEntries.values.flatten().forEach { it.amount = "" }
-        miscellaneousEntries.forEach { it.amount = ""; it.type = "" }
-        miscellaneousEntries.retainAll { it === miscellaneousEntries.first() }
-    }
-
-    fun toJson(): String {
-        val root = JSONObject()
-        val standard = JSONObject()
-        standardEntries.forEach { (sector, entries) ->
-            standard.put(sector, JSONArray().apply {
-                entries.forEach { entry ->
-                    put(JSONObject().apply {
-                        put("label", entry.label)
-                        put("amount", entry.amount)
-                        put("currency", entry.currency)
-                    })
-                }
-            })
-        }
-        root.put("standard", standard)
-        root.put("miscellaneous", JSONArray().apply {
-            miscellaneousEntries.forEach { entry ->
-                put(JSONObject().apply {
-                    put("type", entry.type)
-                    put("amount", entry.amount)
-                    put("currency", entry.currency)
-                })
-            }
-        })
-        root.put("rates", JSONObject().apply {
-            currencyRates.forEach { (currency, storedRate) ->
-                put(currency, JSONObject().apply {
-                    put("date", storedRate.date)
-                    put("rate", storedRate.rate)
-                })
-            }
-        })
-        return root.toString()
-    }
-
     companion object {
-        fun fromJson(value: String): IncomeDraftState {
-            return runCatching {
-                val root = JSONObject(value)
-                val standardObject = root.optJSONObject("standard") ?: JSONObject()
-                val ratesObject = root.optJSONObject("rates") ?: JSONObject()
-                val standard = mutableMapOf<String, MutableList<IncomeAmountEntry>>()
-                val rates = mutableMapOf<String, StoredCurrencyRate>()
-                ratesObject.keys().forEach { currency ->
-                    val saved = ratesObject.optJSONObject(currency)
-                    if (saved != null) {
-                        rates[currency] = StoredCurrencyRate(
-                            date = saved.optString("date"),
-                            rate = saved.optDouble("rate", 0.0)
+        fun fromDatabase(incomes: List<Income>): IncomeDraftState {
+            val standard = mutableMapOf<String, MutableList<IncomeAmountEntry>>()
+            
+            incomeSectors.filterNot { it.isMiscellaneous }.forEach { sector ->
+                standard[sector.title] = mutableStateListOf<IncomeAmountEntry>().apply {
+                    sector.fields.forEach { label ->
+                        val matchingIncome = incomes.find { inc ->
+                            inc.title == label && inc.source.sector.displayName == sector.title
+                        }
+                        add(
+                            IncomeAmountEntry(
+                                label = label,
+                                amount = matchingIncome?.amount?.takeIf { it > 0 }?.toString().orEmpty(),
+                                currency = matchingIncome?.currency?.code ?: "INR",
+                                id = matchingIncome?.id ?: 0
+                            )
                         )
                     }
                 }
-                incomeSectors.filterNot { it.isMiscellaneous }.forEach { sector ->
-                    val savedEntries = standardObject.optJSONArray(sector.title)
-                    standard[sector.title] = mutableStateListOf<IncomeAmountEntry>().apply {
-                        sector.fields.forEachIndexed { index, label ->
-                            val saved = savedEntries?.optJSONObject(index)
-                            add(
-                                IncomeAmountEntry(
-                                    label = label,
-                                    amount = saved?.optString("amount").orEmpty(),
-                                    currency = saved?.optString("currency", "INR") ?: "INR"
-                                )
-                            )
-                        }
-                    }
-                }
-                val miscArray = root.optJSONArray("miscellaneous")
-                val misc = mutableStateListOf<MiscIncomeEntry>().apply {
-                    if (miscArray != null && miscArray.length() > 0) {
-                        repeat(miscArray.length()) { index ->
-                            val saved = miscArray.optJSONObject(index)
-                            add(
-                                MiscIncomeEntry().apply {
-                                    type = saved?.optString("type").orEmpty()
-                                    amount = saved?.optString("amount").orEmpty()
-                                    currency = saved?.optString("currency", "INR") ?: "INR"
-                                }
-                            )
-                        }
-                    } else {
-                        add(MiscIncomeEntry())
-                    }
-                }
-                IncomeDraftState(standard, misc, rates)
-            }.getOrElse {
-                IncomeDraftState(
-                    standardEntries = mutableMapOf(),
-                    miscellaneousEntries = mutableStateListOf(MiscIncomeEntry()),
-                    currencyRates = mutableMapOf()
-                )
             }
+
+            val misc = mutableStateListOf<MiscIncomeEntry>().apply {
+                val miscIncomes = incomes.filter { it.source == IncomeSource.MISCELLANEOUS }
+                if (miscIncomes.isNotEmpty()) {
+                    miscIncomes.forEach { inc ->
+                        add(
+                            MiscIncomeEntry().apply {
+                                databaseId = inc.id
+                                type = inc.title
+                                amount = inc.amount.takeIf { it > 0 }?.toString().orEmpty()
+                                currency = inc.currency.code
+                            }
+                        )
+                    }
+                } else {
+                    add(MiscIncomeEntry())
+                }
+            }
+
+            return IncomeDraftState(standard, misc, mutableMapOf())
         }
     }
 }

@@ -82,4 +82,18 @@ function createBadRequest(message) {
   return error;
 }
 
+router.delete('/sync/:localId', requireFirebaseAuth, async (req, res, next) => {
+  try {
+    const localId = req.params.localId;
+    if (!Number.isFinite(Number(localId))) throw createBadRequest('Invalid localId.');
+    await pool.execute(
+      `DELETE FROM incomes WHERE uid = ? AND local_id = ?`,
+      [req.user.uid, Number(localId)]
+    );
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
+});
+
 module.exports = router;

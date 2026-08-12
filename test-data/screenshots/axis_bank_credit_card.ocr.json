@@ -1,0 +1,9 @@
+{
+  "fullText": "Axis Bank Credit Card\nPaid successfully\n₹795\nTransaction ID 12345",
+  "lines": [
+    { "text": "Axis Bank Credit Card", "left": 10, "top": 100, "right": 200, "bottom": 142, "height": 42 },
+    { "text": "Paid successfully", "left": 10, "top": 165, "right": 150, "bottom": 185, "height": 20 },
+    { "text": "₹795", "left": 10, "top": 230, "right": 120, "bottom": 294, "height": 64 },
+    { "text": "Transaction ID 12345", "left": 10, "top": 320, "right": 180, "bottom": 338, "height": 18 }
+  ]
+}

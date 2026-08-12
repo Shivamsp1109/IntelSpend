@@ -1,0 +1,22 @@
+{
+  "_note": "Dineout/Swiggy bill-settled screen. Three traps: the merchant sits above a 'Bill cleared' status line, the total bill and the user's own share are both on screen, and ML Kit dropped the rupee glyph so the only currency-looking token left is the 'Fr' inside 'Friends'.",
+  "fullText": "11:23\nHelp\nIronhill Bengaluru\nMarathahalli, Bangalore\nBill cleared\n15,635\n14,685 paid by you\nSplit Pay\nNew\nSplit this bill. Friends receive a\nUPI link on WhatsApp to pay\nSplit now\nSavings on this bill\nLoved the service?\nTip your server, 100% goes to them\nGo to Home",
+  "lines": [
+    { "text": "11:23", "left": 30, "top": 25, "right": 85, "bottom": 50, "height": 25 },
+    { "text": "Help", "left": 600, "top": 188, "right": 690, "bottom": 213, "height": 25 },
+    { "text": "Ironhill Bengaluru", "left": 178, "top": 275, "right": 560, "bottom": 315, "height": 40 },
+    { "text": "Marathahalli, Bangalore", "left": 218, "top": 328, "right": 520, "bottom": 352, "height": 24 },
+    { "text": "Bill cleared", "left": 288, "top": 512, "right": 450, "bottom": 540, "height": 28 },
+    { "text": "15,635", "left": 250, "top": 575, "right": 490, "bottom": 645, "height": 70 },
+    { "text": "14,685 paid by you", "left": 245, "top": 722, "right": 495, "bottom": 750, "height": 28 },
+    { "text": "Split Pay", "left": 68, "top": 878, "right": 175, "bottom": 903, "height": 25 },
+    { "text": "New", "left": 185, "top": 878, "right": 240, "bottom": 900, "height": 22 },
+    { "text": "Split this bill. Friends receive a", "left": 68, "top": 925, "right": 390, "bottom": 947, "height": 22 },
+    { "text": "UPI link on WhatsApp to pay", "left": 68, "top": 952, "right": 360, "bottom": 974, "height": 22 },
+    { "text": "Split now", "left": 68, "top": 1008, "right": 165, "bottom": 1030, "height": 22 },
+    { "text": "Savings on this bill", "left": 35, "top": 1130, "right": 300, "bottom": 1156, "height": 26 },
+    { "text": "Loved the service?", "left": 68, "top": 1243, "right": 265, "bottom": 1267, "height": 24 },
+    { "text": "Tip your server, 100% goes to them", "left": 68, "top": 1283, "right": 430, "bottom": 1305, "height": 22 },
+    { "text": "Go to Home", "left": 270, "top": 1492, "right": 465, "bottom": 1520, "height": 28 }
+  ]
+}

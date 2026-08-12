@@ -1,5 +1,8 @@
 .gradle/
 .gradle-user-home/
+.kotlin/
+__pycache__/
+*.pyc
 .idea/
 build/
 local.properties

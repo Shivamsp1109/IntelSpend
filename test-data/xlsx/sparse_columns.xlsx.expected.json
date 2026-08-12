@@ -1,0 +1,23 @@
+{
+ "note": "Empty cells in the middle of rows. Excel omits them, so reading cells sequentially shifts every later column.",
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "Amazon"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "Acme"
+  },
+  {
+   "date": "2026-01-18",
+   "amount": 289.0,
+   "type": "DEBIT",
+   "merchantContains": "Uber"
+  }
+ ]
+}

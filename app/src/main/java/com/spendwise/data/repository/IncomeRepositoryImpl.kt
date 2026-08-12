@@ -13,7 +13,8 @@ import javax.inject.Inject
 
 class IncomeRepositoryImpl @Inject constructor(
     private val dao: IncomeDao,
-    private val remoteDataSource: MySqlIncomeDataSource
+    private val remoteDataSource: MySqlIncomeDataSource,
+    private val syncScheduler: com.spendwise.util.SyncScheduler
 ) : IncomeRepository {
 
     override fun observeIncomes(): Flow<List<Income>> =
@@ -31,6 +32,12 @@ class IncomeRepositoryImpl @Inject constructor(
         syncIncomeOrEnqueueRetry(inserted)
     }
 
+    override suspend fun addIncomesBatch(incomes: List<Income>) {
+        val entities = incomes.map { it.copy(isSynced = false).toEntity() }
+        dao.insertIncomes(entities)
+        syncScheduler.enqueueImmediateSync()
+    }
+
     override suspend fun updateIncome(income: Income) {
         val entity = income.copy(isSynced = false).toEntity()
         dao.updateIncome(entity)
@@ -38,16 +45,33 @@ class IncomeRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteIncome(income: Income) {
-        dao.deleteIncome(income.toEntity())
+        val entity = income.toEntity()
+        dao.deleteIncome(entity)
+        if (entity.id > 0) {
+            val deleteSync = com.spendwise.data.local.IncomeDeleteSyncEntity(localId = entity.id)
+            dao.insertPendingDelete(deleteSync)
+            syncDeleteOrLeave(entity.id)
+        }
     }
 
     override suspend fun syncPendingIncomes() {
+        // 1. Upserts
         dao.getPendingSync().forEach { entity ->
             runCatching {
                 remoteDataSource.upsertIncome(entity)
                 dao.updateIncome(entity.copy(isSynced = true))
             }.onFailure { error ->
                 Log.w(TAG, "Failed to sync income id=${entity.id}; will retry.", error)
+            }
+        }
+
+        // 2. Deletions
+        dao.getPendingDeleteSync().forEach { delete ->
+            runCatching {
+                remoteDataSource.deleteIncome(delete.localId)
+                dao.deletePendingDelete(delete.localId)
+            }.onFailure { error ->
+                Log.w(TAG, "Failed to sync delete income localId=${delete.localId}; will retry.", error)
             }
         }
     }
@@ -59,7 +83,18 @@ class IncomeRepositoryImpl @Inject constructor(
             remoteDataSource.upsertIncome(entity)
             dao.updateIncome(entity.copy(isSynced = true))
         }.onFailure { error ->
-            Log.w(TAG, "Immediate income sync failed; will be retried by SyncWorker.", error)
+            Log.w(TAG, "Immediate income sync failed; scheduling retry.", error)
+            syncScheduler.enqueueImmediateSync()
+        }
+    }
+
+    private suspend fun syncDeleteOrLeave(localId: Int) {
+        runCatching {
+            remoteDataSource.deleteIncome(localId)
+            dao.deletePendingDelete(localId)
+        }.onFailure { error ->
+            Log.w(TAG, "Immediate income deletion sync failed for id=$localId; scheduling retry.", error)
+            syncScheduler.enqueueImmediateSync()
         }
     }
 

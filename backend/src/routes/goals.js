@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
 
@@ -57,16 +58,8 @@ function validateGoal(goal) {
   if (!goal.uid) throw createBadRequest('Missing uid.');
   if (!Number.isFinite(Number(goal.localId))) throw createBadRequest('Invalid localId.');
   if (!goal.type || typeof goal.type !== 'string') throw createBadRequest('Invalid type.');
-  if (!Number.isFinite(Number(goal.targetAmount))) throw createBadRequest('Invalid targetAmount.');
+  if (!Number.isFinite(Number(goal.targetAmount)) || Number(goal.targetAmount) <= 0) throw createBadRequest('Invalid targetAmount.');
   if (!Number.isFinite(Number(goal.targetDate))) throw createBadRequest('Invalid targetDate.');
-}
-
-async function ensureUserExists(uid, email) {
-  await pool.execute(
-    `INSERT IGNORE INTO users (uid, name, email, providers, updated_at)
-     VALUES (?, '', ?, CAST(? AS JSON), ?)`,
-    [uid, email || '', JSON.stringify([]), Date.now()]
-  );
 }
 
 function createBadRequest(message) {

@@ -42,7 +42,6 @@ fun SpendWiseTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = MaterialTheme.typography,
         content = content
     )
 }

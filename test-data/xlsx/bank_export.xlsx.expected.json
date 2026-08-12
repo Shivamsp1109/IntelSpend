@@ -1,0 +1,29 @@
+{
+ "note": "Real .xlsx with genuine date-formatted cells, which arrive as bare day-count serials.",
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "Amazon"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "Acme"
+  },
+  {
+   "date": "2026-01-18",
+   "amount": 289.0,
+   "type": "DEBIT",
+   "merchantContains": "Uber"
+  },
+  {
+   "date": "2026-01-21",
+   "amount": 2340.75,
+   "type": "DEBIT",
+   "merchantContains": "Reliance"
+  }
+ ]
+}

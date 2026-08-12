@@ -62,7 +62,7 @@ router.put('/:uid', requireFirebaseAuth, requireSameUser, async (req, res, next)
       [
         req.params.uid,
         profile.name || '',
-        profile.email || req.user.email || '',
+        req.user.email || profile.email || '',
         profile.gender || null,
         profile.explicitProfileImageUrl || null,
         profile.googlePhotoUrl || null,

@@ -51,18 +51,26 @@ fun SpendWiseScreen(
     onAdd: () -> Unit,
     onAnalytics: () -> Unit,
     onProfile: () -> Unit,
+    /** Off on screens that read rather than capture, so nothing floats over the content. */
+    showAddButton: Boolean = true,
     content: @Composable (Modifier) -> Unit
 ) {
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAdd,
-                containerColor = SpendWisePurple,
-                contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.size(58.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add expense", modifier = Modifier.size(26.dp))
+            if (showAddButton) {
+                FloatingActionButton(
+                    onClick = onAdd,
+                    containerColor = SpendWisePurple,
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    modifier = Modifier.size(58.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add expense",
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         },
         bottomBar = {

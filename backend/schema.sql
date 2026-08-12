@@ -68,7 +68,6 @@ CREATE TABLE IF NOT EXISTS goals (
     monthly_contribution DOUBLE NOT NULL DEFAULT 0,
     updated_at           BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_goal (uid, local_id),
-    INDEX idx_goals_uid (uid),
     CONSTRAINT fk_goals_user
         FOREIGN KEY (uid) REFERENCES users(uid)
         ON DELETE CASCADE
@@ -86,7 +85,6 @@ CREATE TABLE IF NOT EXISTS recurring (
     type       VARCHAR(20) NOT NULL,
     updated_at BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_recurring (uid, local_id),
-    INDEX idx_recurring_uid (uid),
     CONSTRAINT fk_recurring_user
         FOREIGN KEY (uid) REFERENCES users(uid)
         ON DELETE CASCADE
@@ -107,6 +105,32 @@ CREATE TABLE IF NOT EXISTS recurring_expense_cross_ref (
         FOREIGN KEY (uid, expense_local_id)
         REFERENCES expenses(uid, local_id)
         ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- LLM extraction usage log.
+--
+-- One row per successful model call. An escalated image writes two rows, one
+-- per model, so the cap and the cost total both reflect real spend. Drives the
+-- per-user monthly
+-- cap and makes spend inspectable without leaving the database:
+--   SELECT DATE(FROM_UNIXTIME(created_at/1000)) AS day,
+--          COUNT(*) AS calls, SUM(estimated_cost_usd) AS usd
+--     FROM llm_usage GROUP BY day ORDER BY day DESC;
+--
+-- No image or extracted content is stored here — token counts only.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS llm_usage (
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                VARCHAR(128) NOT NULL,
+    model              VARCHAR(64)  NOT NULL,
+    input_tokens       INT          NOT NULL,
+    output_tokens      INT          NOT NULL,
+    -- 8 decimal places: a single Flash-Lite call costs around $0.0003, so 6
+    -- places would round a meaningful share of each row away.
+    estimated_cost_usd DECIMAL(12, 8) NOT NULL DEFAULT 0,
+    created_at         BIGINT       NOT NULL,
+    INDEX idx_llm_usage_uid_time (uid, created_at)
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────

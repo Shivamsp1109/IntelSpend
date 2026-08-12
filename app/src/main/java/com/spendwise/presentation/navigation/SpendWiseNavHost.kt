@@ -52,6 +52,9 @@ fun SpendWiseNavHost() {
         composable(Routes.Home.route) {
             HomeScreen(
                 onAddExpense = { navController.navigate(Routes.AddExpense.route) },
+                onImport = { uri, name, type ->
+                    navController.navigate(Routes.Import.createRoute(uri.toString(), name, type))
+                },
                 onViewExpenses = { navController.navigate(Routes.ExpenseList.route) },
                 onAnalytics = { navController.navigate(Routes.Analytics.route) },
                 onProfile = { navController.navigate(Routes.Profile.route) },
@@ -65,6 +68,9 @@ fun SpendWiseNavHost() {
             ExpenseListScreen(
                 onHome = { navController.navigate(Routes.Home.route) },
                 onAddExpense = { navController.navigate(Routes.AddExpense.route) },
+                onImport = { uri, name, type ->
+                    navController.navigate(Routes.Import.createRoute(uri.toString(), name, type))
+                },
                 onAnalytics = { navController.navigate(Routes.Analytics.route) },
                 onProfile = { navController.navigate(Routes.Profile.route) }
             )
@@ -73,7 +79,6 @@ fun SpendWiseNavHost() {
             AnalyticsScreen(
                 onHome = { navController.navigate(Routes.Home.route) },
                 onTransactions = { navController.navigate(Routes.ExpenseList.route) },
-                onAddExpense = { navController.navigate(Routes.AddExpense.route) },
                 onProfile = { navController.navigate(Routes.Profile.route) }
             )
         }
@@ -93,6 +98,26 @@ fun SpendWiseNavHost() {
         }
         composable(Routes.Notifications.route) {
             NotificationsScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = Routes.Import.route
+        ) { backStackEntry ->
+            val uriStr = backStackEntry.arguments?.getString("uri")
+            val name = backStackEntry.arguments?.getString("name")
+            val sourceType = backStackEntry.arguments?.getString("type") ?: "image"
+            val uri = uriStr?.let { android.net.Uri.parse(it) }
+            
+            com.spendwise.presentation.screens.ImportScreen(
+                fileUri = uri,
+                fileName = name,
+                sourceType = sourceType,
+                onNavigateUp = { navController.popBackStack() },
+                onNavigateToTransactions = {
+                    navController.navigate(Routes.ExpenseList.route) {
+                        popUpTo(Routes.Home.route)
+                    }
+                }
+            )
         }
     }
 }

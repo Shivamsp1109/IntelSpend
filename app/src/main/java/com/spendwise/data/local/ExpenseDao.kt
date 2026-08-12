@@ -14,6 +14,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY date DESC")
     fun observeExpenses(): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT * FROM expenses WHERE date >= :startDate AND date <= :endDate ORDER BY date DESC")
+    suspend fun getExpensesBetweenDates(startDate: Long, endDate: Long): List<ExpenseEntity>
+
     @androidx.room.RawQuery(observedEntities = [ExpenseEntity::class])
     fun pagingSourceRaw(query: androidx.sqlite.db.SupportSQLiteQuery): PagingSource<Int, ExpenseEntity>
 
@@ -40,6 +43,9 @@ interface ExpenseDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExpense(expense: ExpenseEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(expenses: List<ExpenseEntity>): List<Long>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPendingDelete(delete: ExpenseDeleteSyncEntity)

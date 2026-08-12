@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
 
@@ -103,17 +104,9 @@ function validateRecurring(entry) {
   if (!entry.uid) throw createBadRequest('Missing uid.');
   if (!Number.isFinite(Number(entry.localId))) throw createBadRequest('Invalid localId.');
   if (!entry.title || typeof entry.title !== 'string') throw createBadRequest('Invalid title.');
-  if (!Number.isFinite(Number(entry.amount))) throw createBadRequest('Invalid amount.');
+  if (!Number.isFinite(Number(entry.amount)) || Number(entry.amount) <= 0) throw createBadRequest('Invalid amount.');
   if (!entry.cadence || typeof entry.cadence !== 'string') throw createBadRequest('Invalid cadence.');
   if (!entry.type || typeof entry.type !== 'string') throw createBadRequest('Invalid type.');
-}
-
-async function ensureUserExists(uid, email) {
-  await pool.execute(
-    `INSERT IGNORE INTO users (uid, name, email, providers, updated_at)
-     VALUES (?, '', ?, CAST(? AS JSON), ?)`,
-    [uid, email || '', JSON.stringify([]), Date.now()]
-  );
 }
 
 function createBadRequest(message) {

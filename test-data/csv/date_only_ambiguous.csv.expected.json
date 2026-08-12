@@ -1,0 +1,20 @@
+{
+ "note": "Every date is ambiguous - no component exceeds 12 anywhere in the file. Amounts and directions must still be right; the date is asserted only for parseability.",
+ "expected": [
+  {
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "Amazon"
+  },
+  {
+   "amount": 456.5,
+   "type": "DEBIT",
+   "merchantContains": "Swiggy"
+  },
+  {
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "Acme"
+  }
+ ]
+}

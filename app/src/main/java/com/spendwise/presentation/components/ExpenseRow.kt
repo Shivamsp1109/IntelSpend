@@ -84,10 +84,10 @@ fun ExpenseRow(
 }
 
 @Composable
-fun CategoryBadge(category: ExpenseCategory) {
+fun CategoryBadge(category: ExpenseCategory, modifier: Modifier = Modifier) {
     val (icon, color) = category.visuals()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(42.dp)
             .background(color.copy(alpha = 0.14f), CircleShape),
         contentAlignment = Alignment.Center

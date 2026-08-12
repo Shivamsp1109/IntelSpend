@@ -1,0 +1,11 @@
+{
+  "fullText": "JANATHA BAZAAR DRUG COUNTER\nGSTIN: 29AAAAA0000A1Z2\nHSN Code: 30049099\nTotal Qty: 100\nTotal Items: 2\nTotal: 270.00",
+  "lines": [
+    { "text": "JANATHA BAZAAR DRUG COUNTER", "left": 10, "top": 50, "right": 200, "bottom": 90, "height": 40 },
+    { "text": "GSTIN: 29AAAAA0000A1Z2", "left": 10, "top": 100, "right": 150, "bottom": 115, "height": 15 },
+    { "text": "HSN Code: 30049099", "left": 10, "top": 300, "right": 150, "bottom": 315, "height": 15 },
+    { "text": "Total Qty: 100", "left": 10, "top": 500, "right": 120, "bottom": 515, "height": 15 },
+    { "text": "Total Items: 2", "left": 10, "top": 520, "right": 120, "bottom": 535, "height": 15 },
+    { "text": "Total: 270.00", "left": 10, "top": 600, "right": 180, "bottom": 625, "height": 25 }
+  ]
+}

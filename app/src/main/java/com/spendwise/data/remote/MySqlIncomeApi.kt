@@ -11,5 +11,11 @@ interface MySqlIncomeApi {
         @Header("Authorization") bearerToken: String,
         @Body income: IncomeSyncPayload
     ): Response<Unit>
+
+    @retrofit2.http.DELETE("incomes/sync/{localId}")
+    suspend fun deleteIncome(
+        @Header("Authorization") bearerToken: String,
+        @retrofit2.http.Path("localId") localId: Int
+    ): Response<Unit>
 }
 

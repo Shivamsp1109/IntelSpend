@@ -1,0 +1,178 @@
+{
+ "note": "Two identical transactions on the same day. Both are real and both must survive.",
+ "fullText": "Date Narration Withdrawal Deposit Balance\n12/01/2026 UPI/AMAZON PAY/order 1,299.00 98,701.00\n12/01/2026 UPI/AMAZON PAY/order 1,299.00 97,402.00\n13/01/2026 POS/SWIGGY/BANGALORE 456.50 96,945.50",
+ "words": [
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 141.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 90.0,
+   "right": 496.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 86.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AMAZON",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 146.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "PAY/order",
+   "left": 150.6,
+   "top": 110.0,
+   "right": 192.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 393.2,
+   "top": 110.0,
+   "right": 430.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "98,701.00",
+   "left": 524.6,
+   "top": 110.0,
+   "right": 566.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 126.0,
+   "right": 86.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AMAZON",
+   "left": 100.0,
+   "top": 126.0,
+   "right": 146.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "PAY/order",
+   "left": 150.6,
+   "top": 126.0,
+   "right": 192.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 393.2,
+   "top": 126.0,
+   "right": 430.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "97,402.00",
+   "left": 524.6,
+   "top": 126.0,
+   "right": 566.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "13/01/2026",
+   "left": 40.0,
+   "top": 142.0,
+   "right": 86.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "POS/SWIGGY/BANGALORE",
+   "left": 100.0,
+   "top": 142.0,
+   "right": 192.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "456.50",
+   "left": 402.4,
+   "top": 142.0,
+   "right": 430.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "96,945.50",
+   "left": 524.6,
+   "top": 142.0,
+   "right": 566.0,
+   "bottom": 151.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-13",
+   "amount": 456.5,
+   "type": "DEBIT",
+   "merchantContains": "SWIGGY"
+  }
+ ]
+}

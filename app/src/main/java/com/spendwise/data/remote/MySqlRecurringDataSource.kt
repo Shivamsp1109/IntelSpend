@@ -20,11 +20,11 @@ class MySqlRecurringDataSource @Inject constructor(
     }
 
     suspend fun upsertRecurring(entry: RecurringEntity) {
+        val uid = firebaseAuth.currentUser?.uid
+            ?: error("Cannot sync recurring entry without an authenticated Firebase user.")
         val response = api.upsertRecurring(
             bearerToken = bearerToken(),
-            recurring = entry.toSyncPayload(
-                uid = firebaseAuth.currentUser!!.uid
-            )
+            recurring = entry.toSyncPayload(uid = uid)
         )
         if (!response.isSuccessful) throw HttpException(response)
     }

@@ -93,7 +93,7 @@ import java.util.Calendar
 @Composable
 fun AddExpenseBottomSheet(
     onDismiss: () -> Unit,
-    onUpload: () -> Unit,
+    onUpload: (String) -> Unit,
     viewModel: AddExpenseViewModel = hiltViewModel()
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -127,8 +127,17 @@ fun AddExpenseBottomSheet(
             ExpenseTypeChooser(
                 onClose = onDismiss,
                 onManual = { showManualForm = true },
-                onUpload = {
-                    scope.launch { sheetState.hide() }.invokeOnCompletion { onUpload() }
+                onUploadPdf = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onUpload("pdf") }
+                },
+                onUploadCsv = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onUpload("csv") }
+                },
+                onUploadImage = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onUpload("image") }
+                },
+                onScanDocument = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion { onUpload("scan") }
                 }
             )
         }
@@ -143,7 +152,10 @@ fun AddExpenseBottomSheet(
 private fun ExpenseTypeChooser(
     onClose: () -> Unit,
     onManual: () -> Unit,
-    onUpload: () -> Unit
+    onUploadPdf: () -> Unit,
+    onUploadCsv: () -> Unit,
+    onUploadImage: () -> Unit,
+    onScanDocument: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -183,10 +195,31 @@ private fun ExpenseTypeChooser(
         )
         Spacer(Modifier.height(12.dp))
         ChooserOptionCard(
+            icon = Icons.Default.Description,
+            title = "Upload PDF Statement",
+            subtitle = "Upload bank statement in PDF format",
+            onClick = onUploadPdf
+        )
+        Spacer(Modifier.height(12.dp))
+        ChooserOptionCard(
             icon = Icons.Default.Upload,
-            title = "Upload PDF / Image",
-            subtitle = "Extract from receipt, bill or bank PDF",
-            onClick = onUpload
+            title = "Upload CSV Statement",
+            subtitle = "Import exported bank or card transactions",
+            onClick = onUploadCsv
+        )
+        Spacer(Modifier.height(12.dp))
+        ChooserOptionCard(
+            icon = Icons.Default.Upload,
+            title = "Upload Screenshot",
+            subtitle = "Upload transaction screenshot from any app",
+            onClick = onUploadImage
+        )
+        Spacer(Modifier.height(12.dp))
+        ChooserOptionCard(
+            icon = Icons.Default.Store,
+            title = "Scan Document",
+            subtitle = "Take a photo of your statement or receipt",
+            onClick = onScanDocument
         )
         Spacer(Modifier.height(8.dp))
     }

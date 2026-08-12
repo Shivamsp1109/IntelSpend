@@ -139,7 +139,10 @@ private fun AdvancedFilterContent(
                     }
                 }
                 if (state.startDate != null || state.endDate != null) {
-                    TextButton(onClick = { state = state.copy(startDate = null, endDate = null) }) {
+                    TextButton(onClick = {
+                        state = state.copy(startDate = null, endDate = null)
+                        dateRangePickerState.setSelection(null, null)
+                    }) {
                         Text("Clear Dates", color = MaterialTheme.colorScheme.error)
                     }
                 }

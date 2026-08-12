@@ -1,0 +1,23 @@
+{
+ "note": "Semicolon delimited with European decimal commas and dotted dates.",
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "Amazon"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "Lohn"
+  },
+  {
+   "date": "2026-01-21",
+   "amount": 2340.75,
+   "type": "DEBIT",
+   "merchantContains": "Rewe"
+  }
+ ]
+}

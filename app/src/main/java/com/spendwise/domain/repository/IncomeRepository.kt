@@ -8,6 +8,7 @@ interface IncomeRepository {
     fun searchIncomes(query: String, source: String?): Flow<List<Income>>
     fun observePendingSyncCount(): Flow<Int>
     suspend fun addIncome(income: Income)
+    suspend fun addIncomesBatch(incomes: List<Income>)
     suspend fun updateIncome(income: Income)
     suspend fun deleteIncome(income: Income)
     suspend fun syncPendingIncomes()

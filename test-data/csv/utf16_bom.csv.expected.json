@@ -1,0 +1,17 @@
+{
+ "note": "UTF-16LE with a BOM, which is what Excel's 'Unicode Text' export produces.",
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "Amazon"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "Acme"
+  }
+ ]
+}

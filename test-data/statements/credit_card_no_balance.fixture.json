@@ -1,0 +1,248 @@
+{
+ "note": "Credit-card statement: one amount column, no balance, direction carried only by a Cr suffix on refunds.",
+ "fullText": "Date Narration Amount\n12 Jan 2026 AMAZON RETAIL INDIA 1,299.00 Dr\n14 Jan 2026 SWIGGY BANGALORE 456.50 Dr\n17 Jan 2026 AMAZON RETAIL REFUND 1,299.00 Cr\n21 Jan 2026 INDIAN OIL PETROL PUMP 2,000.00 Dr",
+ "words": [
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 141.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Amount",
+   "left": 432.4,
+   "top": 90.0,
+   "right": 460.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "12 Jan 2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 90.6,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "AMAZON",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 127.6,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "RETAIL",
+   "left": 132.2,
+   "top": 110.0,
+   "right": 159.8,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "INDIA",
+   "left": 164.4,
+   "top": 110.0,
+   "right": 187.4,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 409.2,
+   "top": 110.0,
+   "right": 446.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "Dr",
+   "left": 450.0,
+   "top": 110.0,
+   "right": 459.2,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "14 Jan 2026",
+   "left": 40.0,
+   "top": 126.0,
+   "right": 90.6,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "SWIGGY",
+   "left": 100.0,
+   "top": 126.0,
+   "right": 127.6,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "BANGALORE",
+   "left": 132.2,
+   "top": 126.0,
+   "right": 173.6,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "456.50",
+   "left": 418.4,
+   "top": 126.0,
+   "right": 446.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "Dr",
+   "left": 450.0,
+   "top": 126.0,
+   "right": 459.2,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "17 Jan 2026",
+   "left": 40.0,
+   "top": 142.0,
+   "right": 90.6,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "AMAZON",
+   "left": 100.0,
+   "top": 142.0,
+   "right": 127.6,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "RETAIL",
+   "left": 132.2,
+   "top": 142.0,
+   "right": 159.8,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "REFUND",
+   "left": 164.4,
+   "top": 142.0,
+   "right": 192.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 409.2,
+   "top": 142.0,
+   "right": 446.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "Cr",
+   "left": 450.0,
+   "top": 142.0,
+   "right": 459.2,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "21 Jan 2026",
+   "left": 40.0,
+   "top": 158.0,
+   "right": 90.6,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "INDIAN",
+   "left": 100.0,
+   "top": 158.0,
+   "right": 127.6,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "OIL",
+   "left": 132.2,
+   "top": 158.0,
+   "right": 146.0,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "PETROL",
+   "left": 150.6,
+   "top": 158.0,
+   "right": 178.2,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "PUMP",
+   "left": 182.8,
+   "top": 158.0,
+   "right": 201.2,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "2,000.00",
+   "left": 409.2,
+   "top": 158.0,
+   "right": 446.0,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "Dr",
+   "left": 450.0,
+   "top": 158.0,
+   "right": 459.2,
+   "bottom": 167.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-14",
+   "amount": 456.5,
+   "type": "DEBIT",
+   "merchantContains": "SWIGGY"
+  },
+  {
+   "date": "2026-01-17",
+   "amount": 1299.0,
+   "type": "CREDIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-21",
+   "amount": 2000.0,
+   "type": "DEBIT",
+   "merchantContains": "INDIAN"
+  }
+ ]
+}

@@ -10,9 +10,11 @@ import androidx.room.RoomDatabase
         GoalEntity::class,
         RecurringEntity::class,
         RecurringExpenseCrossRef::class,
-        ExpenseDeleteSyncEntity::class
+        ExpenseDeleteSyncEntity::class,
+        IncomeDeleteSyncEntity::class,
+        LearnedCategoryEntity::class
     ],
-    version = 3,
+    version = 6,
     exportSchema = true
 )
 abstract class SpendWiseDatabase : RoomDatabase() {
@@ -20,4 +22,6 @@ abstract class SpendWiseDatabase : RoomDatabase() {
     abstract fun incomeDao(): IncomeDao
     abstract fun goalDao(): GoalDao
     abstract fun recurringEntryDao(): RecurringEntryDao
+    abstract fun learnedCategoryDao(): LearnedCategoryDao
+    abstract fun analyticsDao(): AnalyticsDao
 }

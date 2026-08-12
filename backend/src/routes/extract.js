@@ -1,0 +1,225 @@
+const express = require('express');
+const { pool } = require('../config/db');
+const { requireFirebaseAuth } = require('../middleware/auth');
+const {
+  extractFromImage,
+  enrichMerchants,
+  narrateSpending,
+  SUPPORTED_MEDIA_TYPES
+} = require('../services/visionExtraction');
+const { sanitiseFigures } = require('../services/narrativeFigures');
+
+const router = express.Router();
+
+// Base64 inflates by ~33%, so this caps the decoded image at roughly 5 MB.
+// Larger images cost more tokens without improving extraction — the client
+// downsamples before upload.
+const MAX_BASE64_CHARS = 7_000_000;
+
+// Per-user monthly ceiling. A runaway client loop or a shared account can't run
+// up an unbounded bill; the user sees a clear error instead.
+const MONTHLY_CALL_CAP = Number(process.env.EXTRACT_MONTHLY_CAP || 500);
+
+// Names are deduplicated client-side, so this comfortably covers a long
+// statement while bounding the size of a single request.
+const MAX_MERCHANT_NAMES = 200;
+
+// Per million tokens, per model, used to record an estimated cost alongside each
+// call so spend is visible in the database. Escalation means two models can bill
+// against one import, so the rate has to be looked up per attempt rather than
+// assumed. Unknown models fall back to the primary rate.
+const COST_PER_MTOK = {
+  'gemini-3.1-flash-lite': { input: 0.25, output: 1.50 },
+  'gemini-3-flash': { input: 0.50, output: 3.00 },
+  'gemini-3.5-flash-lite': { input: 0.30, output: 2.50 },
+  'gemini-3.5-flash': { input: 1.50, output: 9.00 }
+};
+const DEFAULT_INPUT_COST_PER_MTOK = Number(process.env.EXTRACT_INPUT_COST_PER_MTOK || 0.25);
+const DEFAULT_OUTPUT_COST_PER_MTOK = Number(process.env.EXTRACT_OUTPUT_COST_PER_MTOK || 1.50);
+
+router.post('/', requireFirebaseAuth, async (req, res, next) => {
+  try {
+    const { imageBase64, mediaType, hint } = req.body || {};
+
+    if (typeof imageBase64 !== 'string' || imageBase64.length === 0) {
+      throw createBadRequest('Missing imageBase64.');
+    }
+    if (imageBase64.length > MAX_BASE64_CHARS) {
+      throw createBadRequest('Image is too large. Resize it below 5 MB and try again.');
+    }
+    if (!SUPPORTED_MEDIA_TYPES.includes(mediaType)) {
+      throw createBadRequest(`mediaType must be one of: ${SUPPORTED_MEDIA_TYPES.join(', ')}`);
+    }
+
+    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    if (usedThisMonth >= MONTHLY_CALL_CAP) {
+      const error = new Error(
+        `Monthly extraction limit of ${MONTHLY_CALL_CAP} reached. It resets at the start of next month.`
+      );
+      error.status = 429;
+      throw error;
+    }
+
+    const result = await extractFromImage({ base64: imageBase64, mediaType, hint });
+
+    // One row per model attempt — an escalated image really did cost two calls,
+    // and the cap counts rows, so it reflects actual spend rather than imports.
+    // Logged after the call so a failed extraction isn't billed against the cap.
+    for (const attempt of result.attempts) {
+      await recordUsage(req.user.uid, attempt);
+    }
+
+    return res.json({
+      documentType: result.documentType,
+      transactions: result.transactions,
+      model: result.model,
+      escalated: result.escalated,
+      callsUsedThisMonth: usedThisMonth + result.attempts.length,
+      monthlyCallCap: MONTHLY_CALL_CAP
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * Cleans up payee names pulled from bank statement narrations.
+ *
+ * Separate from the image endpoint because it is a text task: one request covers
+ * a whole statement regardless of page count, and costs a fraction of a single
+ * image call. Amounts and dates stay deterministic — only the name is modelled.
+ */
+router.post('/merchants', requireFirebaseAuth, async (req, res, next) => {
+  try {
+    const names = req.body?.names;
+    if (!Array.isArray(names) || names.length === 0) {
+      throw createBadRequest('Missing names array.');
+    }
+    if (names.length > MAX_MERCHANT_NAMES) {
+      throw createBadRequest(`At most ${MAX_MERCHANT_NAMES} names per request.`);
+    }
+    if (!names.every((name) => typeof name === 'string' && name.length <= 200)) {
+      throw createBadRequest('Each name must be a string of at most 200 characters.');
+    }
+
+    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    if (usedThisMonth >= MONTHLY_CALL_CAP) {
+      const error = new Error(
+        `Monthly extraction limit of ${MONTHLY_CALL_CAP} reached. It resets at the start of next month.`
+      );
+      error.status = 429;
+      throw error;
+    }
+
+    const result = await enrichMerchants(names);
+    await recordUsage(req.user.uid, result);
+
+    return res.json({ merchants: result.merchants, model: result.model });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * Writes a plain-English summary of a period from figures the app has already
+ * calculated.
+ *
+ * The payload is rebuilt field by field rather than forwarded, for two reasons.
+ * It bounds what reaches the model — no transaction rows, no note fields, no
+ * ids. And the text that does go through (merchant and category names) was
+ * itself read out of user-supplied documents, so it is untrusted input heading
+ * into a prompt; capping it and pinning the response schema keeps a merchant
+ * called "ignore previous instructions" from being able to do anything with it.
+ */
+router.post('/narrative', requireFirebaseAuth, async (req, res, next) => {
+  try {
+    const figures = sanitiseFigures(req.body);
+
+    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    if (usedThisMonth >= MONTHLY_CALL_CAP) {
+      const error = new Error(
+        `Monthly limit of ${MONTHLY_CALL_CAP} model calls reached. It resets at the start of next month.`
+      );
+      error.status = 429;
+      throw error;
+    }
+
+    const result = await narrateSpending(figures);
+    await recordUsage(req.user.uid, result);
+
+    return res.json({
+      headline: result.headline,
+      narrative: result.narrative,
+      suggestions: result.suggestions,
+      model: result.model,
+      callsUsedThisMonth: usedThisMonth + 1,
+      monthlyCallCap: MONTHLY_CALL_CAP
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/** Current spend and remaining quota, so the app can show it in settings. */
+router.get('/usage', requireFirebaseAuth, async (req, res, next) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*)                AS calls,
+              COALESCE(SUM(input_tokens), 0)  AS input_tokens,
+              COALESCE(SUM(output_tokens), 0) AS output_tokens,
+              COALESCE(SUM(estimated_cost_usd), 0) AS cost_usd
+         FROM llm_usage
+        WHERE uid = ? AND created_at >= ?`,
+      [req.user.uid, startOfMonthMillis()]
+    );
+
+    const row = rows[0] || {};
+    return res.json({
+      callsThisMonth: Number(row.calls || 0),
+      monthlyCallCap: MONTHLY_CALL_CAP,
+      inputTokens: Number(row.input_tokens || 0),
+      outputTokens: Number(row.output_tokens || 0),
+      estimatedCostUsd: Number(row.cost_usd || 0)
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+async function countCallsThisMonth(uid) {
+  const [rows] = await pool.execute(
+    'SELECT COUNT(*) AS calls FROM llm_usage WHERE uid = ? AND created_at >= ?',
+    [uid, startOfMonthMillis()]
+  );
+  return Number(rows[0]?.calls || 0);
+}
+
+async function recordUsage(uid, attempt) {
+  const { inputTokens, outputTokens } = attempt.usage;
+  const rate = COST_PER_MTOK[attempt.model] || {
+    input: DEFAULT_INPUT_COST_PER_MTOK,
+    output: DEFAULT_OUTPUT_COST_PER_MTOK
+  };
+  const estimatedCostUsd =
+    (inputTokens / 1_000_000) * rate.input +
+    (outputTokens / 1_000_000) * rate.output;
+
+  await pool.execute(
+    `INSERT INTO llm_usage (uid, model, input_tokens, output_tokens, estimated_cost_usd, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [uid, attempt.model, inputTokens, outputTokens, estimatedCostUsd, Date.now()]
+  );
+}
+
+function startOfMonthMillis() {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+}
+
+function createBadRequest(message) {
+  const error = new Error(message);
+  error.status = 400;
+  return error;
+}
+
+module.exports = router;

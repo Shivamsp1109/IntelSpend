@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.spendwise.domain.model.Expense
-import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.usecase.DeleteExpenseUseCase
 import com.spendwise.domain.usecase.GetPagedExpensesUseCase
 import com.spendwise.domain.usecase.UpdateExpenseUseCase
@@ -61,8 +60,3 @@ class ExpenseListViewModel @Inject constructor(
         }
     }
 }
-
-data class ExpenseListUiState(
-    val query: String = "",
-    val selectedCategory: ExpenseCategory? = null
-)

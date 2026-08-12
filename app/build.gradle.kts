@@ -21,7 +21,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "MYSQL_API_BASE_URL", "\"http://192.168.1.12:3000/\"")
+        buildConfigField("String", "MYSQL_API_BASE_URL", "\"http://192.168.1.19:3000/\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,6 +71,11 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.okhttp.logging)
+
+    // Ingestion pipeline
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.opencsv)
+    implementation(libs.pdfbox.android)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

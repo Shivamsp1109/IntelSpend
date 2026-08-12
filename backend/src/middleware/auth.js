@@ -9,7 +9,7 @@ async function requireFirebaseAuth(req, res, next) {
   }
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
     req.user = {
       uid: decodedToken.uid,
       email: decodedToken.email || ''

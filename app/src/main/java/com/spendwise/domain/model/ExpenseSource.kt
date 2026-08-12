@@ -9,7 +9,9 @@ enum class ExpenseSource(val label: String) {
     OCR("OCR"),
     PDF("PDF"),
     GMAIL("Gmail"),
-    SCREENSHOT("Screenshot");
+    SCREENSHOT("Screenshot"),
+    CSV("CSV"),
+    EXCEL("Excel");
 
     companion object {
         fun fromLabel(label: String): ExpenseSource =

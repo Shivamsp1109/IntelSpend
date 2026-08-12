@@ -116,3 +116,55 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `learned_categories` (
+                `merchant` TEXT NOT NULL,
+                `category` TEXT NOT NULL,
+                `updatedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`merchant`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `income_delete_sync_queue` (
+                `localId`  INTEGER NOT NULL,
+                `createdAt` INTEGER NOT NULL,
+                PRIMARY KEY(`localId`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE INDEX IF NOT EXISTS `index_income_delete_sync_queue_localId`
+            ON `income_delete_sync_queue` (`localId`)
+            """.trimIndent()
+        )
+    }
+}
+
+/**
+ * Room migration from schema version 5 → 6.
+ *
+ * Adds indices on `expenses.date` and `incomes.date`.
+ *
+ * Every analytics aggregate is scoped to a date range, and without an index
+ * SQLite full-scans the table for each one — which is invisible on a hand-typed
+ * expense list but not once statement imports push the row count into the
+ * thousands. Purely additive: no columns or rows are touched.
+ */
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_date` ON `expenses` (`date`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_incomes_date` ON `incomes` (`date`)")
+    }
+}

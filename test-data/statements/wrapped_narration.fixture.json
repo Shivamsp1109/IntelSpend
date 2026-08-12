@@ -1,0 +1,304 @@
+{
+ "note": "Narration wraps to a continuation row with no date and no figures. Those rows must attach to the transaction above, not be dropped or parsed as their own.",
+ "fullText": "Date Particulars Withdrawal Deposit Balance\n12/01/2026 UPI/FLIPKART INTERNET/order 3,499.00 96,501.00\nconfirmation 4471829\n16/01/2026 NEFT/GLOBEX SOLUTIONS/consulting 45,000.00 141,501.00\ninvoice for December\n19/01/2026 POS/BIG BAZAAR/monthly 4,210.50 137,290.50\ngrocery run\n24/01/2026 UPI/AIRTEL PREPAID/mobile 719.00 136,571.50\nrecharge plan",
+ "words": [
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Particulars",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 150.6,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 90.0,
+   "right": 496.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 86.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/FLIPKART",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 155.2,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "INTERNET/order",
+   "left": 159.8,
+   "top": 110.0,
+   "right": 224.2,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "3,499.00",
+   "left": 393.2,
+   "top": 110.0,
+   "right": 430.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "96,501.00",
+   "left": 524.6,
+   "top": 110.0,
+   "right": 566.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "confirmation",
+   "left": 100.0,
+   "top": 122.0,
+   "right": 155.2,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "4471829",
+   "left": 159.8,
+   "top": 122.0,
+   "right": 192.0,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "16/01/2026",
+   "left": 40.0,
+   "top": 138.0,
+   "right": 86.0,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "NEFT/GLOBEX",
+   "left": 100.0,
+   "top": 138.0,
+   "right": 150.6,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "SOLUTIONS/consulting",
+   "left": 155.2,
+   "top": 138.0,
+   "right": 247.2,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "45,000.00",
+   "left": 454.6,
+   "top": 138.0,
+   "right": 496.0,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "141,501.00",
+   "left": 520.0,
+   "top": 138.0,
+   "right": 566.0,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "invoice",
+   "left": 100.0,
+   "top": 150.0,
+   "right": 132.2,
+   "bottom": 159.0,
+   "page": 1
+  },
+  {
+   "text": "for",
+   "left": 136.8,
+   "top": 150.0,
+   "right": 150.6,
+   "bottom": 159.0,
+   "page": 1
+  },
+  {
+   "text": "December",
+   "left": 155.2,
+   "top": 150.0,
+   "right": 192.0,
+   "bottom": 159.0,
+   "page": 1
+  },
+  {
+   "text": "19/01/2026",
+   "left": 40.0,
+   "top": 166.0,
+   "right": 86.0,
+   "bottom": 175.0,
+   "page": 1
+  },
+  {
+   "text": "POS/BIG",
+   "left": 100.0,
+   "top": 166.0,
+   "right": 132.2,
+   "bottom": 175.0,
+   "page": 1
+  },
+  {
+   "text": "BAZAAR/monthly",
+   "left": 136.8,
+   "top": 166.0,
+   "right": 201.2,
+   "bottom": 175.0,
+   "page": 1
+  },
+  {
+   "text": "4,210.50",
+   "left": 393.2,
+   "top": 166.0,
+   "right": 430.0,
+   "bottom": 175.0,
+   "page": 1
+  },
+  {
+   "text": "137,290.50",
+   "left": 520.0,
+   "top": 166.0,
+   "right": 566.0,
+   "bottom": 175.0,
+   "page": 1
+  },
+  {
+   "text": "grocery",
+   "left": 100.0,
+   "top": 178.0,
+   "right": 132.2,
+   "bottom": 187.0,
+   "page": 1
+  },
+  {
+   "text": "run",
+   "left": 136.8,
+   "top": 178.0,
+   "right": 150.6,
+   "bottom": 187.0,
+   "page": 1
+  },
+  {
+   "text": "24/01/2026",
+   "left": 40.0,
+   "top": 194.0,
+   "right": 86.0,
+   "bottom": 203.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AIRTEL",
+   "left": 100.0,
+   "top": 194.0,
+   "right": 146.0,
+   "bottom": 203.0,
+   "page": 1
+  },
+  {
+   "text": "PREPAID/mobile",
+   "left": 150.6,
+   "top": 194.0,
+   "right": 215.0,
+   "bottom": 203.0,
+   "page": 1
+  },
+  {
+   "text": "719.00",
+   "left": 402.4,
+   "top": 194.0,
+   "right": 430.0,
+   "bottom": 203.0,
+   "page": 1
+  },
+  {
+   "text": "136,571.50",
+   "left": 520.0,
+   "top": 194.0,
+   "right": 566.0,
+   "bottom": 203.0,
+   "page": 1
+  },
+  {
+   "text": "recharge",
+   "left": 100.0,
+   "top": 206.0,
+   "right": 136.8,
+   "bottom": 215.0,
+   "page": 1
+  },
+  {
+   "text": "plan",
+   "left": 141.4,
+   "top": 206.0,
+   "right": 159.8,
+   "bottom": 215.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 3499.0,
+   "type": "DEBIT",
+   "merchantContains": "FLIPKART"
+  },
+  {
+   "date": "2026-01-16",
+   "amount": 45000.0,
+   "type": "CREDIT",
+   "merchantContains": "GLOBEX"
+  },
+  {
+   "date": "2026-01-19",
+   "amount": 4210.5,
+   "type": "DEBIT",
+   "merchantContains": "BIG"
+  },
+  {
+   "date": "2026-01-24",
+   "amount": 719.0,
+   "type": "DEBIT",
+   "merchantContains": "AIRTEL"
+  }
+ ]
+}

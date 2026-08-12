@@ -3,14 +3,23 @@ package com.spendwise.presentation.viewmodel
 import com.spendwise.MainDispatcherRule
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.ExpenseFilterState
+import com.spendwise.domain.model.Income
 import com.spendwise.domain.repository.AuthRepository
 import com.spendwise.domain.repository.AuthUser
 import com.spendwise.domain.repository.ExpenseRepository
+import com.spendwise.domain.repository.FakeAnalyticsRepository
 import com.spendwise.domain.repository.Gender
+import com.spendwise.domain.repository.IncomeRepository
+import com.spendwise.domain.usecase.AddIncomesUseCase
+import com.spendwise.domain.usecase.UpdateIncomeUseCase
+import com.spendwise.domain.usecase.DeleteIncomeUseCase
 import com.spendwise.domain.usecase.GetBudgetStatusUseCase
 import com.spendwise.domain.usecase.GetExpensesUseCase
+import com.spendwise.domain.usecase.GetIncomesUseCase
 import com.spendwise.domain.usecase.GetPendingSyncCountUseCase
 import com.spendwise.domain.usecase.GetSmartInsightsUseCase
+import com.spendwise.domain.usecase.GetSpendingSummaryUseCase
 import com.spendwise.domain.usecase.SyncPendingExpensesUseCase
 import com.spendwise.util.IncomePreferenceStore
 import com.spendwise.util.NetworkMonitor
@@ -42,6 +51,8 @@ class HomeViewModelTest {
         )
     )
     private val repository = FakeExpenseRepository(expenses)
+    private val incomeRepository = FakeIncomeRepository()
+    private val analyticsRepository = FakeAnalyticsRepository()
 
     @Test
     fun `summarizes home metrics from expenses`() = runTest {
@@ -52,7 +63,15 @@ class HomeViewModelTest {
             authRepository = FakeAuthRepository(),
             incomePreferenceStore = FakeIncomePreferenceStore(),
             getBudgetStatusUseCase = GetBudgetStatusUseCase(),
-            getSmartInsightsUseCase = GetSmartInsightsUseCase(),
+            getSpendingSummaryUseCase = GetSpendingSummaryUseCase(
+                analyticsRepository,
+                GetSmartInsightsUseCase()
+            ),
+            analyticsRepository = analyticsRepository,
+            getIncomesUseCase = GetIncomesUseCase(incomeRepository),
+            addIncomesUseCase = AddIncomesUseCase(incomeRepository),
+            updateIncomeUseCase = UpdateIncomeUseCase(incomeRepository),
+            deleteIncomeUseCase = DeleteIncomeUseCase(incomeRepository),
             syncPendingExpensesUseCase = SyncPendingExpensesUseCase(repository)
         )
         val collectJob = launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -76,13 +95,29 @@ class HomeViewModelTest {
         private val expenses: Flow<List<Expense>>
     ) : ExpenseRepository {
         override fun observeExpenses(): Flow<List<Expense>> = expenses
-        override fun observePagedExpenses(query: String, category: String?): Flow<PagingData<Expense>> = flowOf(PagingData.empty())
-        override fun searchExpenses(query: String, category: String?): Flow<List<Expense>> = emptyFlow()
+        override fun observePagedExpenses(filterState: ExpenseFilterState): Flow<PagingData<Expense>> = flowOf(PagingData.empty())
         override fun observePendingSyncCount(): Flow<Int> = flowOf(0)
         override suspend fun addExpense(expense: Expense) = Unit
+        override suspend fun addExpensesBatch(expenses: List<Expense>) = Unit
         override suspend fun updateExpense(expense: Expense) = Unit
         override suspend fun deleteExpense(expense: Expense) = Unit
         override suspend fun syncPendingExpenses() = Unit
+    }
+
+    private class FakeIncomeRepository : IncomeRepository {
+        private val incomes = MutableStateFlow<List<Income>>(emptyList())
+        override fun observeIncomes(): Flow<List<Income>> = incomes
+        override fun searchIncomes(query: String, source: String?): Flow<List<Income>> = emptyFlow()
+        override fun observePendingSyncCount(): Flow<Int> = flowOf(0)
+        override suspend fun addIncome(income: Income) {
+            incomes.value = incomes.value + income
+        }
+        override suspend fun addIncomesBatch(incomes: List<Income>) {
+            this.incomes.value = this.incomes.value + incomes
+        }
+        override suspend fun updateIncome(income: Income) = Unit
+        override suspend fun deleteIncome(income: Income) = Unit
+        override suspend fun syncPendingIncomes() = Unit
     }
 
     private class FakeNetworkMonitor : NetworkMonitor {

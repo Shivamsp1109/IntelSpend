@@ -1,0 +1,374 @@
+{
+ "note": "MM/DD/YYYY document. Parsing each date in isolation reads 01/05 as 1 May; resolving the order across the whole file reads it as 5 January.",
+ "fullText": "Date Narration Chq/Ref No Withdrawal Deposit Balance\n01/15/2026 AMAZON MKTPLACE REF100000 42.99 99,957.01\n01/05/2026 STARBUCKS STORE 411 REF100007 8.75 99,948.26\n01/22/2026 ACME CORP DIRECT DEP REF100014 3,200.00 103,148.26\n02/09/2026 SHELL OIL 8842 REF100021 55.20 103,093.06\n02/11/2026 WHOLE FOODS MKT REF100028 132.44 102,960.62",
+ "words": [
+  {
+   "text": "Date",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 58.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Narration",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 141.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Chq/Ref",
+   "left": 300.0,
+   "top": 90.0,
+   "right": 332.2,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "No",
+   "left": 336.8,
+   "top": 90.0,
+   "right": 346.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Withdrawal",
+   "left": 384.0,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Deposit",
+   "left": 463.8,
+   "top": 90.0,
+   "right": 496.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "Balance",
+   "left": 533.8,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "01/15/2026",
+   "left": 40.0,
+   "top": 110.0,
+   "right": 86.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "AMAZON",
+   "left": 100.0,
+   "top": 110.0,
+   "right": 127.6,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "MKTPLACE",
+   "left": 132.2,
+   "top": 110.0,
+   "right": 169.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "REF100000",
+   "left": 300.0,
+   "top": 110.0,
+   "right": 341.4,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "42.99",
+   "left": 407.0,
+   "top": 110.0,
+   "right": 430.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "99,957.01",
+   "left": 524.6,
+   "top": 110.0,
+   "right": 566.0,
+   "bottom": 119.0,
+   "page": 1
+  },
+  {
+   "text": "01/05/2026",
+   "left": 40.0,
+   "top": 126.0,
+   "right": 86.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "STARBUCKS",
+   "left": 100.0,
+   "top": 126.0,
+   "right": 141.4,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "STORE",
+   "left": 146.0,
+   "top": 126.0,
+   "right": 169.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "411",
+   "left": 173.6,
+   "top": 126.0,
+   "right": 187.4,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "REF100007",
+   "left": 300.0,
+   "top": 126.0,
+   "right": 341.4,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "8.75",
+   "left": 411.6,
+   "top": 126.0,
+   "right": 430.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "99,948.26",
+   "left": 524.6,
+   "top": 126.0,
+   "right": 566.0,
+   "bottom": 135.0,
+   "page": 1
+  },
+  {
+   "text": "01/22/2026",
+   "left": 40.0,
+   "top": 142.0,
+   "right": 86.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "ACME",
+   "left": 100.0,
+   "top": 142.0,
+   "right": 118.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "CORP",
+   "left": 123.0,
+   "top": 142.0,
+   "right": 141.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "DIRECT",
+   "left": 146.0,
+   "top": 142.0,
+   "right": 173.6,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "DEP",
+   "left": 178.2,
+   "top": 142.0,
+   "right": 192.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "REF100014",
+   "left": 300.0,
+   "top": 142.0,
+   "right": 341.4,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "3,200.00",
+   "left": 459.2,
+   "top": 142.0,
+   "right": 496.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "103,148.26",
+   "left": 520.0,
+   "top": 142.0,
+   "right": 566.0,
+   "bottom": 151.0,
+   "page": 1
+  },
+  {
+   "text": "02/09/2026",
+   "left": 40.0,
+   "top": 158.0,
+   "right": 86.0,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "SHELL",
+   "left": 100.0,
+   "top": 158.0,
+   "right": 123.0,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "OIL",
+   "left": 127.6,
+   "top": 158.0,
+   "right": 141.4,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "8842",
+   "left": 146.0,
+   "top": 158.0,
+   "right": 164.4,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "REF100021",
+   "left": 300.0,
+   "top": 158.0,
+   "right": 341.4,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "55.20",
+   "left": 407.0,
+   "top": 158.0,
+   "right": 430.0,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "103,093.06",
+   "left": 520.0,
+   "top": 158.0,
+   "right": 566.0,
+   "bottom": 167.0,
+   "page": 1
+  },
+  {
+   "text": "02/11/2026",
+   "left": 40.0,
+   "top": 174.0,
+   "right": 86.0,
+   "bottom": 183.0,
+   "page": 1
+  },
+  {
+   "text": "WHOLE",
+   "left": 100.0,
+   "top": 174.0,
+   "right": 123.0,
+   "bottom": 183.0,
+   "page": 1
+  },
+  {
+   "text": "FOODS",
+   "left": 127.6,
+   "top": 174.0,
+   "right": 150.6,
+   "bottom": 183.0,
+   "page": 1
+  },
+  {
+   "text": "MKT",
+   "left": 155.2,
+   "top": 174.0,
+   "right": 169.0,
+   "bottom": 183.0,
+   "page": 1
+  },
+  {
+   "text": "REF100028",
+   "left": 300.0,
+   "top": 174.0,
+   "right": 341.4,
+   "bottom": 183.0,
+   "page": 1
+  },
+  {
+   "text": "132.44",
+   "left": 402.4,
+   "top": 174.0,
+   "right": 430.0,
+   "bottom": 183.0,
+   "page": 1
+  },
+  {
+   "text": "102,960.62",
+   "left": 520.0,
+   "top": 174.0,
+   "right": 566.0,
+   "bottom": 183.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-15",
+   "amount": 42.99,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-05",
+   "amount": 8.75,
+   "type": "DEBIT",
+   "merchantContains": "STARBUCKS"
+  },
+  {
+   "date": "2026-01-22",
+   "amount": 3200.0,
+   "type": "CREDIT",
+   "merchantContains": "ACME"
+  },
+  {
+   "date": "2026-02-09",
+   "amount": 55.2,
+   "type": "DEBIT",
+   "merchantContains": "SHELL"
+  },
+  {
+   "date": "2026-02-11",
+   "amount": 132.44,
+   "type": "DEBIT",
+   "merchantContains": "WHOLE"
+  }
+ ]
+}

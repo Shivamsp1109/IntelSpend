@@ -1,0 +1,448 @@
+{
+ "note": "Header row absent entirely - columns must be recovered by clustering the right edges of the figures.",
+ "fullText": "12/01/2026 UPI/AMAZON PAY/9876543210/Order REF100000 1,299.00 98,701.00\n14/01/2026 POS/SWIGGY/BANGALORE REF100007 456.50 98,244.50\n15/01/2026 NEFT/ACME PAYROLL/SALARY JAN REF100014 85,000.00 183,244.50\n18/01/2026 UPI/UBER INDIA/trip fare REF100021 289.00 182,955.50\n21/01/2026 POS/RELIANCE FRESH/MUMBAI REF100028 2,340.75 180,614.75\n23/01/2026 IMPS/RAHUL SHARMA/rent share REF100035 7,500.00 188,114.75\n25/01/2026 UPI/BESCOM/electricity bill REF100042 1,875.00 186,239.75\n28/01/2026 POS/CROMA/headphones REF100049 8,999.00 177,240.75",
+ "words": [
+  {
+   "text": "12/01/2026",
+   "left": 40.0,
+   "top": 90.0,
+   "right": 86.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/AMAZON",
+   "left": 100.0,
+   "top": 90.0,
+   "right": 146.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "PAY/9876543210/Order",
+   "left": 150.6,
+   "top": 90.0,
+   "right": 242.6,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "REF100000",
+   "left": 300.0,
+   "top": 90.0,
+   "right": 341.4,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "1,299.00",
+   "left": 393.2,
+   "top": 90.0,
+   "right": 430.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "98,701.00",
+   "left": 524.6,
+   "top": 90.0,
+   "right": 566.0,
+   "bottom": 99.0,
+   "page": 1
+  },
+  {
+   "text": "14/01/2026",
+   "left": 40.0,
+   "top": 106.0,
+   "right": 86.0,
+   "bottom": 115.0,
+   "page": 1
+  },
+  {
+   "text": "POS/SWIGGY/BANGALORE",
+   "left": 100.0,
+   "top": 106.0,
+   "right": 192.0,
+   "bottom": 115.0,
+   "page": 1
+  },
+  {
+   "text": "REF100007",
+   "left": 300.0,
+   "top": 106.0,
+   "right": 341.4,
+   "bottom": 115.0,
+   "page": 1
+  },
+  {
+   "text": "456.50",
+   "left": 402.4,
+   "top": 106.0,
+   "right": 430.0,
+   "bottom": 115.0,
+   "page": 1
+  },
+  {
+   "text": "98,244.50",
+   "left": 524.6,
+   "top": 106.0,
+   "right": 566.0,
+   "bottom": 115.0,
+   "page": 1
+  },
+  {
+   "text": "15/01/2026",
+   "left": 40.0,
+   "top": 122.0,
+   "right": 86.0,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "NEFT/ACME",
+   "left": 100.0,
+   "top": 122.0,
+   "right": 141.4,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "PAYROLL/SALARY",
+   "left": 146.0,
+   "top": 122.0,
+   "right": 210.4,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "JAN",
+   "left": 215.0,
+   "top": 122.0,
+   "right": 228.8,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "REF100014",
+   "left": 300.0,
+   "top": 122.0,
+   "right": 341.4,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "85,000.00",
+   "left": 454.6,
+   "top": 122.0,
+   "right": 496.0,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "183,244.50",
+   "left": 520.0,
+   "top": 122.0,
+   "right": 566.0,
+   "bottom": 131.0,
+   "page": 1
+  },
+  {
+   "text": "18/01/2026",
+   "left": 40.0,
+   "top": 138.0,
+   "right": 86.0,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/UBER",
+   "left": 100.0,
+   "top": 138.0,
+   "right": 136.8,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "INDIA/trip",
+   "left": 141.4,
+   "top": 138.0,
+   "right": 187.4,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "fare",
+   "left": 192.0,
+   "top": 138.0,
+   "right": 210.4,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "REF100021",
+   "left": 300.0,
+   "top": 138.0,
+   "right": 341.4,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "289.00",
+   "left": 402.4,
+   "top": 138.0,
+   "right": 430.0,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "182,955.50",
+   "left": 520.0,
+   "top": 138.0,
+   "right": 566.0,
+   "bottom": 147.0,
+   "page": 1
+  },
+  {
+   "text": "21/01/2026",
+   "left": 40.0,
+   "top": 154.0,
+   "right": 86.0,
+   "bottom": 163.0,
+   "page": 1
+  },
+  {
+   "text": "POS/RELIANCE",
+   "left": 100.0,
+   "top": 154.0,
+   "right": 155.2,
+   "bottom": 163.0,
+   "page": 1
+  },
+  {
+   "text": "FRESH/MUMBAI",
+   "left": 159.8,
+   "top": 154.0,
+   "right": 215.0,
+   "bottom": 163.0,
+   "page": 1
+  },
+  {
+   "text": "REF100028",
+   "left": 300.0,
+   "top": 154.0,
+   "right": 341.4,
+   "bottom": 163.0,
+   "page": 1
+  },
+  {
+   "text": "2,340.75",
+   "left": 393.2,
+   "top": 154.0,
+   "right": 430.0,
+   "bottom": 163.0,
+   "page": 1
+  },
+  {
+   "text": "180,614.75",
+   "left": 520.0,
+   "top": 154.0,
+   "right": 566.0,
+   "bottom": 163.0,
+   "page": 1
+  },
+  {
+   "text": "23/01/2026",
+   "left": 40.0,
+   "top": 170.0,
+   "right": 86.0,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "IMPS/RAHUL",
+   "left": 100.0,
+   "top": 170.0,
+   "right": 146.0,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "SHARMA/rent",
+   "left": 150.6,
+   "top": 170.0,
+   "right": 201.2,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "share",
+   "left": 205.8,
+   "top": 170.0,
+   "right": 228.8,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "REF100035",
+   "left": 300.0,
+   "top": 170.0,
+   "right": 341.4,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "7,500.00",
+   "left": 459.2,
+   "top": 170.0,
+   "right": 496.0,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "188,114.75",
+   "left": 520.0,
+   "top": 170.0,
+   "right": 566.0,
+   "bottom": 179.0,
+   "page": 1
+  },
+  {
+   "text": "25/01/2026",
+   "left": 40.0,
+   "top": 186.0,
+   "right": 86.0,
+   "bottom": 195.0,
+   "page": 1
+  },
+  {
+   "text": "UPI/BESCOM/electricity",
+   "left": 100.0,
+   "top": 186.0,
+   "right": 201.2,
+   "bottom": 195.0,
+   "page": 1
+  },
+  {
+   "text": "bill",
+   "left": 205.8,
+   "top": 186.0,
+   "right": 224.2,
+   "bottom": 195.0,
+   "page": 1
+  },
+  {
+   "text": "REF100042",
+   "left": 300.0,
+   "top": 186.0,
+   "right": 341.4,
+   "bottom": 195.0,
+   "page": 1
+  },
+  {
+   "text": "1,875.00",
+   "left": 393.2,
+   "top": 186.0,
+   "right": 430.0,
+   "bottom": 195.0,
+   "page": 1
+  },
+  {
+   "text": "186,239.75",
+   "left": 520.0,
+   "top": 186.0,
+   "right": 566.0,
+   "bottom": 195.0,
+   "page": 1
+  },
+  {
+   "text": "28/01/2026",
+   "left": 40.0,
+   "top": 202.0,
+   "right": 86.0,
+   "bottom": 211.0,
+   "page": 1
+  },
+  {
+   "text": "POS/CROMA/headphones",
+   "left": 100.0,
+   "top": 202.0,
+   "right": 192.0,
+   "bottom": 211.0,
+   "page": 1
+  },
+  {
+   "text": "REF100049",
+   "left": 300.0,
+   "top": 202.0,
+   "right": 341.4,
+   "bottom": 211.0,
+   "page": 1
+  },
+  {
+   "text": "8,999.00",
+   "left": 393.2,
+   "top": 202.0,
+   "right": 430.0,
+   "bottom": 211.0,
+   "page": 1
+  },
+  {
+   "text": "177,240.75",
+   "left": 520.0,
+   "top": 202.0,
+   "right": 566.0,
+   "bottom": 211.0,
+   "page": 1
+  }
+ ],
+ "expected": [
+  {
+   "date": "2026-01-12",
+   "amount": 1299.0,
+   "type": "DEBIT",
+   "merchantContains": "AMAZON"
+  },
+  {
+   "date": "2026-01-14",
+   "amount": 456.5,
+   "type": "DEBIT",
+   "merchantContains": "SWIGGY"
+  },
+  {
+   "date": "2026-01-15",
+   "amount": 85000.0,
+   "type": "CREDIT",
+   "merchantContains": "ACME"
+  },
+  {
+   "date": "2026-01-18",
+   "amount": 289.0,
+   "type": "DEBIT",
+   "merchantContains": "UBER"
+  },
+  {
+   "date": "2026-01-21",
+   "amount": 2340.75,
+   "type": "DEBIT",
+   "merchantContains": "RELIANCE"
+  },
+  {
+   "date": "2026-01-23",
+   "amount": 7500.0,
+   "type": "CREDIT",
+   "merchantContains": "RAHUL"
+  },
+  {
+   "date": "2026-01-25",
+   "amount": 1875.0,
+   "type": "DEBIT",
+   "merchantContains": "BESCOM"
+  },
+  {
+   "date": "2026-01-28",
+   "amount": 8999.0,
+   "type": "DEBIT",
+   "merchantContains": "CROMA"
+  }
+ ]
+}

@@ -2,6 +2,7 @@ package com.spendwise.domain.usecase
 
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.ExpenseFilterState
 import com.spendwise.domain.repository.ExpenseRepository
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
@@ -33,10 +34,10 @@ class AddExpenseUseCaseTest {
     @Suppress("unused")
     private class EmptyRepository : ExpenseRepository {
         override fun observeExpenses(): Flow<List<Expense>> = emptyFlow()
-        override fun observePagedExpenses(query: String, category: String?): Flow<PagingData<Expense>> = flowOf(PagingData.empty())
-        override fun searchExpenses(query: String, category: String?): Flow<List<Expense>> = emptyFlow()
+        override fun observePagedExpenses(filterState: ExpenseFilterState): Flow<PagingData<Expense>> = flowOf(PagingData.empty())
         override fun observePendingSyncCount(): Flow<Int> = flowOf(0)
         override suspend fun addExpense(expense: Expense) = Unit
+        override suspend fun addExpensesBatch(expenses: List<Expense>) = Unit
         override suspend fun updateExpense(expense: Expense) = Unit
         override suspend fun deleteExpense(expense: Expense) = Unit
         override suspend fun syncPendingExpenses() = Unit

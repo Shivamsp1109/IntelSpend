@@ -9,6 +9,7 @@ interface ExpenseRepository {
     fun observePagedExpenses(filterState: com.spendwise.domain.model.ExpenseFilterState): Flow<PagingData<Expense>>
     fun observePendingSyncCount(): Flow<Int>
     suspend fun addExpense(expense: Expense)
+    suspend fun addExpensesBatch(expenses: List<Expense>)
     suspend fun updateExpense(expense: Expense)
     suspend fun deleteExpense(expense: Expense)
     suspend fun syncPendingExpenses()

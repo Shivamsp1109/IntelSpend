@@ -1,12 +1,14 @@
 package com.spendwise.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.Income
 import com.spendwise.domain.model.IncomeSource
 
-@Entity(tableName = "incomes")
+// Indexed on date for the same reason as expenses — see ExpenseEntity.
+@Entity(tableName = "incomes", indices = [Index(value = ["date"])])
 data class IncomeEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

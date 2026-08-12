@@ -6,12 +6,15 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "check": "node --check src/server.js && node --check src/config/db.js && node --check src/config/firebase.js && node --check src/middleware/auth.js && node --check src/routes/users.js && node --check src/routes/expenses.js"
+    "test": "node test/extraction-escalation.test.js && node test/narrative.test.js",
+    "check": "node --check src/server.js && node --check src/config/db.js && node --check src/config/firebase.js && node --check src/middleware/auth.js && node --check src/services/users.js && node --check src/services/visionExtraction.js && node --check src/services/narrativeFigures.js && node --check src/routes/users.js && node --check src/routes/expenses.js && node --check src/routes/goals.js && node --check src/routes/recurring.js && node --check src/routes/extract.js"
   },
   "dependencies": {
+    "@google/genai": "^2.16.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
     "firebase-admin": "^13.0.2",
     "mysql2": "^3.11.5"
   },

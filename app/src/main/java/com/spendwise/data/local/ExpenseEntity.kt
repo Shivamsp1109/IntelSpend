@@ -1,13 +1,16 @@
 package com.spendwise.data.local
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.model.ExpenseSource
 
-@Entity(tableName = "expenses")
+// Indexed on date: every analytics aggregate is range-scoped, and an unindexed
+// range predicate full-scans the table on each one.
+@Entity(tableName = "expenses", indices = [Index(value = ["date"])])
 data class ExpenseEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,

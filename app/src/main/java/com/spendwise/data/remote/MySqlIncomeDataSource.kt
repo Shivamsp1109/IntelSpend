@@ -21,5 +21,17 @@ class MySqlIncomeDataSource @Inject constructor(
         )
         if (!response.isSuccessful) throw HttpException(response)
     }
+
+    suspend fun deleteIncome(localId: Int) {
+        val user = firebaseAuth.currentUser
+            ?: error("Cannot delete income without an authenticated Firebase user.")
+        val token = user.getIdToken(false).await().token
+            ?: error("Cannot delete income without a Firebase ID token.")
+        val response = api.deleteIncome(
+            bearerToken = "Bearer $token",
+            localId = localId
+        )
+        if (!response.isSuccessful && response.code() != 404) throw HttpException(response)
+    }
 }
 

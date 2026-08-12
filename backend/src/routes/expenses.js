@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
 
@@ -74,7 +75,7 @@ function validateExpense(expense) {
   if (!expense.uid) throw createBadRequest('Missing uid.');
   if (!Number.isFinite(Number(expense.localId))) throw createBadRequest('Invalid localId.');
   if (!expense.title || typeof expense.title !== 'string') throw createBadRequest('Invalid title.');
-  if (!Number.isFinite(Number(expense.amount))) throw createBadRequest('Invalid amount.');
+  if (!Number.isFinite(Number(expense.amount)) || Number(expense.amount) <= 0) throw createBadRequest('Invalid amount.');
   if (!expense.category || typeof expense.category !== 'string') throw createBadRequest('Invalid category.');
   if (!Number.isFinite(Number(expense.date))) throw createBadRequest('Invalid date.');
   // v2 optional fields — validated only when present
@@ -84,19 +85,6 @@ function validateExpense(expense) {
     throw createBadRequest('Invalid currency.');
   if (expense.source !== undefined && typeof expense.source !== 'string')
     throw createBadRequest('Invalid source.');
-}
-
-async function ensureUserExists(uid, email) {
-  await pool.execute(
-    `INSERT IGNORE INTO users (
-      uid,
-      name,
-      email,
-      providers,
-      updated_at
-    ) VALUES (?, '', ?, CAST(? AS JSON), ?)`,
-    [uid, email || '', JSON.stringify([]), Date.now()]
-  );
 }
 
 function createBadRequest(message) {

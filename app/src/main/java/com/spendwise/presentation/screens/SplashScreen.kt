@@ -45,6 +45,7 @@ fun SplashScreen(
     onLoggedOut: () -> Unit
 ) {
     val user by authViewModel.currentUser.collectAsState()
+    val isAuthResolved by authViewModel.isAuthResolved.collectAsState()
     val logoTransition = rememberInfiniteTransition(label = "logo")
     val logoScale by logoTransition.animateFloat(
         initialValue = 0.96f,
@@ -128,6 +129,7 @@ fun SplashScreen(
             Spacer(Modifier.height(70.dp))
             Button(
                 onClick = { if (user == null) onLoggedOut() else onLoggedIn() },
+                enabled = isAuthResolved,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = SpendWisePurple),
                 shape = RoundedCornerShape(16.dp)
             ) {

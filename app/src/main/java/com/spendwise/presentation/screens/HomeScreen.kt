@@ -61,9 +61,17 @@ import com.spendwise.presentation.viewmodel.HomeViewModel
 import com.spendwise.util.CurrencyFormatter
 import com.spendwise.util.DateUtils
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import java.io.File
+import android.net.Uri
+
 @Composable
 fun HomeScreen(
-    onAddExpense: () -> Unit,       // kept for deep link / Upload path
+    onAddExpense: () -> Unit,
+    onImport: (Uri, String, String) -> Unit,
     onViewExpenses: () -> Unit,
     onAnalytics: () -> Unit,
     onProfile: () -> Unit,
@@ -76,6 +84,33 @@ fun HomeScreen(
     // FAB now opens the sheet in-place → HomeViewModel stays subscribed → instant update
     var showAddExpenseSheet by rememberSaveable { mutableStateOf(false) }
     val userIncome = state.monthlyIncome
+    val context = LocalContext.current
+
+    var cameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+
+    val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            onImport(uri, "document.pdf", "pdf")
+        }
+    }
+
+    val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            onImport(uri, "transactions.csv", "csv")
+        }
+    }
+
+    val imageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            onImport(uri, "screenshot.jpg", "screenshot")
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && cameraUri != null) {
+            onImport(cameraUri!!, "scan.jpg", "scan")
+        }
+    }
 
     SpendWiseScreen(
         selected = BottomDestination.Home,
@@ -233,20 +268,30 @@ fun HomeScreen(
     if (showAddExpenseSheet) {
         AddExpenseBottomSheet(
             onDismiss = { showAddExpenseSheet = false },
-            onUpload = {
+            onUpload = { type ->
                 showAddExpenseSheet = false
-                onAddExpense()   // Upload path handed to caller
+                when (type) {
+                    "pdf" -> pdfLauncher.launch("application/pdf")
+                    "csv" -> csvLauncher.launch(SPREADSHEET_MIME_TYPES)
+                    "image" -> imageLauncher.launch("image/*")
+                    "scan" -> {
+                        val file = File(context.cacheDir, "scan_${System.currentTimeMillis()}.jpg")
+                        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                        cameraUri = uri
+                        cameraLauncher.launch(uri)
+                    }
+                }
             }
         )
     }
 
     // ── Income sheet ─────────────────────────────────────────────────────────
     if (showIncomeSheet) {
+        val currentMonthIncomes by viewModel.currentMonthIncomes.collectAsState()
         IncomeBottomSheet(
-            incomeDraftsJson = incomeDrafts,
+            currentMonthIncomes = currentMonthIncomes,
             onDismiss = { showIncomeSheet = false },
-            onDraftsChange = viewModel::updateIncomeDrafts,
-            onAddIncomes = viewModel::addIncomes
+            onSaveIncomes = viewModel::saveIncomes
         )
     }
 }

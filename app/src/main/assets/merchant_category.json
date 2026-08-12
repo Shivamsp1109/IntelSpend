@@ -1,0 +1,23 @@
+{
+  "swiggy": "Food",
+  "zomato": "Food",
+  "uber eats": "Food",
+  "uber": "Travel",
+  "ola": "Travel",
+  "rapido": "Travel",
+  "amazon": "Shopping",
+  "flipkart": "Shopping",
+  "myntra": "Shopping",
+  "netflix": "Entertainment",
+  "spotify": "Entertainment",
+  "hotstar": "Entertainment",
+  "electricity": "Bills",
+  "airtel": "Bills",
+  "jio": "Bills",
+  "apollo": "Health",
+  "pharmeasy": "Health",
+  "bigbasket": "Shopping",
+  "blinkit": "Shopping",
+  "zepto": "Shopping",
+  "dmart": "Shopping"
+}
