@@ -46,7 +46,7 @@ class HomeViewModelTest {
 
     private val expenses = MutableStateFlow(
         listOf(
-            Expense(title = "Food", amount = 250.0, category = ExpenseCategory.Food, date = System.currentTimeMillis()),
+            Expense(title = "Food", amount = 250.0, category = ExpenseCategory.FoodDining, date = System.currentTimeMillis()),
             Expense(title = "Travel", amount = 600.0, category = ExpenseCategory.Travel, date = System.currentTimeMillis())
         )
     )

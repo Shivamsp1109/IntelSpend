@@ -55,12 +55,35 @@ import kotlin.math.ceil
  */
 val ExpenseCategory.chartColor: Color
     get() = when (this) {
-        ExpenseCategory.Food -> Color(0xFFFF6B6B)
-        ExpenseCategory.Travel -> Color(0xFF4D96FF)
+        // Related categories sit near each other in hue, so a glance at the
+        // donut separates food from travel from bills without reading the key.
+        ExpenseCategory.FoodDining -> Color(0xFFFF6B6B)
+        ExpenseCategory.Groceries -> Color(0xFFFF9F43)
+
+        ExpenseCategory.Transport -> Color(0xFF4D96FF)
+        ExpenseCategory.Fuel -> Color(0xFF2C6FD1)
+        ExpenseCategory.Travel -> Color(0xFF00C2CB)
+
         ExpenseCategory.Shopping -> SpendWisePurple
-        ExpenseCategory.Bills -> SpendWiseOrange
-        ExpenseCategory.Health -> SpendWiseGreen
-        ExpenseCategory.Entertainment -> Color(0xFFD44BD8)
+        ExpenseCategory.PersonalCare -> Color(0xFFD44BD8)
+        ExpenseCategory.Entertainment -> Color(0xFFB15BFF)
+
+        ExpenseCategory.RentHousing -> Color(0xFF8D6E63)
+        ExpenseCategory.HomeHousehold -> Color(0xFFA1887F)
+        ExpenseCategory.Utilities -> SpendWiseOrange
+        ExpenseCategory.MobileInternet -> Color(0xFFFFC048)
+        ExpenseCategory.Subscriptions -> Color(0xFFE8B339)
+
+        ExpenseCategory.HealthMedical -> SpendWiseGreen
+        ExpenseCategory.Insurance -> Color(0xFF15997A)
+        ExpenseCategory.Education -> Color(0xFF5FB878)
+
+        ExpenseCategory.KidsFamily -> Color(0xFFFF8FB1)
+        ExpenseCategory.Pets -> Color(0xFFC98A5E)
+        ExpenseCategory.GiftsDonations -> Color(0xFFE0567A)
+
+        ExpenseCategory.TaxesGovernment -> Color(0xFF6C7A96)
+        ExpenseCategory.BankFees -> Color(0xFF8892A8)
         ExpenseCategory.Other -> Color(0xFF9A93A8)
     }
 

@@ -35,7 +35,7 @@ class ReportExporterTest {
         title: String = "Lunch",
         merchant: String? = "Ironhill",
         amount: Double = 1_450.5,
-        category: ExpenseCategory = ExpenseCategory.Food
+        category: ExpenseCategory = ExpenseCategory.FoodDining
     ) = Expense(
         id = 1,
         title = title,
@@ -114,7 +114,7 @@ class ReportExporterTest {
         assertEquals("2026-08-11", fields[0])
         assertEquals("Lunch", fields[1])
         assertEquals("Ironhill", fields[2])
-        assertEquals("Food", fields[3])
+        assertEquals("Food & Dining", fields[3])
         assertEquals("1450.5", fields[4])
         assertEquals("INR", fields[5])
         assertEquals("MANUAL", fields[6])

@@ -30,7 +30,7 @@ class GetSpendingSummaryUseCaseTest {
     fun `comparisons cover categories from either period`() = runTest {
         val useCase = useCaseWith(
             FakeAnalyticsRepository(
-                current = mapOf(ExpenseCategory.Food to 8_000.0),
+                current = mapOf(ExpenseCategory.FoodDining to 8_000.0),
                 previous = mapOf(ExpenseCategory.Travel to 5_000.0)
             )
         )
@@ -38,10 +38,10 @@ class GetSpendingSummaryUseCaseTest {
         val comparisons = useCase(period).categoryComparisons
 
         assertEquals(
-            setOf(ExpenseCategory.Food, ExpenseCategory.Travel),
+            setOf(ExpenseCategory.FoodDining, ExpenseCategory.Travel),
             comparisons.map { it.category }.toSet()
         )
-        assertTrue(comparisons.single { it.category == ExpenseCategory.Food }.isNew)
+        assertTrue(comparisons.single { it.category == ExpenseCategory.FoodDining }.isNew)
         assertTrue(comparisons.single { it.category == ExpenseCategory.Travel }.isDropped)
     }
 
@@ -54,12 +54,12 @@ class GetSpendingSummaryUseCaseTest {
         val useCase = useCaseWith(
             FakeAnalyticsRepository(
                 current = mapOf(
-                    ExpenseCategory.Bills to 20_000.0,
-                    ExpenseCategory.Food to 6_000.0
+                    ExpenseCategory.Utilities to 20_000.0,
+                    ExpenseCategory.FoodDining to 6_000.0
                 ),
                 previous = mapOf(
-                    ExpenseCategory.Bills to 19_500.0,
-                    ExpenseCategory.Food to 1_000.0
+                    ExpenseCategory.Utilities to 19_500.0,
+                    ExpenseCategory.FoodDining to 1_000.0
                 )
             )
         )
@@ -67,7 +67,7 @@ class GetSpendingSummaryUseCaseTest {
         val comparisons = useCase(period).categoryComparisons
 
         // Bills is four times larger but barely moved.
-        assertEquals(ExpenseCategory.Food, comparisons.first().category)
+        assertEquals(ExpenseCategory.FoodDining, comparisons.first().category)
         assertEquals(5_000.0, comparisons.first().change, 0.0001)
     }
 
@@ -75,14 +75,14 @@ class GetSpendingSummaryUseCaseTest {
     fun `categories absent from both periods are left out`() = runTest {
         val useCase = useCaseWith(
             FakeAnalyticsRepository(
-                current = mapOf(ExpenseCategory.Food to 100.0, ExpenseCategory.Health to 0.0),
-                previous = mapOf(ExpenseCategory.Health to 0.0)
+                current = mapOf(ExpenseCategory.FoodDining to 100.0, ExpenseCategory.HealthMedical to 0.0),
+                previous = mapOf(ExpenseCategory.HealthMedical to 0.0)
             )
         )
 
         val comparisons = useCase(period).categoryComparisons
 
-        assertEquals(listOf(ExpenseCategory.Food), comparisons.map { it.category })
+        assertEquals(listOf(ExpenseCategory.FoodDining), comparisons.map { it.category })
     }
 
     @Test
@@ -113,7 +113,7 @@ class GetSpendingSummaryUseCaseTest {
     @Test
     fun `the whole snapshot reports one currency and one range`() = runTest {
         val useCase = useCaseWith(
-            FakeAnalyticsRepository(current = mapOf(ExpenseCategory.Food to 500.0))
+            FakeAnalyticsRepository(current = mapOf(ExpenseCategory.FoodDining to 500.0))
         )
 
         val snapshot = useCase(period)

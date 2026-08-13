@@ -1,5 +1,6 @@
 package com.spendwise.presentation.viewmodel
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -108,11 +109,8 @@ class AnalyticsViewModel @Inject constructor(
         viewModelScope.launch { load(period.value, currencyOverride.value) }
     }
 
-    /** True when this Android version needs storage permission before saving. */
-    fun exportNeedsPermission(): Boolean = reportExporter.needsStoragePermission()
-
     /**
-     * Writes the period on screen into Downloads/IntelSpend.
+     * Writes the period on screen into encrypted app-private storage.
      *
      * The transactions are re-read rather than taken from anything the screen
      * holds, but through the same period and currency, so the rows in the file
@@ -141,29 +139,33 @@ class AnalyticsViewModel @Inject constructor(
                 return@launch
             }
 
-            val result = withContext(Dispatchers.IO) { reportExporter.save(report, format) }
-
-            _uiState.update {
-                it.copy(
-                    isExporting = false,
-                    exportMessage = when (result) {
-                        // Naming the folder matters — otherwise a "Saved" toast
-                        // leaves the user hunting for the file.
-                        is SaveResult.Saved -> "Saved to ${result.path}"
-                        is SaveResult.Failed -> result.message
+            when (val result = withContext(Dispatchers.IO) { reportExporter.save(report, format) }) {
+                is SaveResult.Saved -> {
+                    // Offered for sharing straight away. The stored copy is
+                    // encrypted and app-private, so without this the user has a
+                    // report they cannot actually get at.
+                    val shareUri = withContext(Dispatchers.IO) {
+                        reportExporter.shareableCopy(result.fileName)
                     }
-                )
+                    _uiState.update {
+                        it.copy(
+                            isExporting = false,
+                            exportMessage = "Saved ${result.fileName}",
+                            pendingShare = shareUri?.let { uri -> PendingShare(uri, format) }
+                        )
+                    }
+                }
+                is SaveResult.Failed -> _uiState.update {
+                    it.copy(isExporting = false, exportMessage = result.message)
+                }
             }
         }
     }
 
-    fun reportStorageDenied() {
-        _uiState.update {
-            it.copy(
-                isExporting = false,
-                exportMessage = "Storage permission is needed to save into Downloads."
-            )
-        }
+    /** Called once the share sheet has been shown, so it is not offered twice. */
+    fun clearPendingShare() {
+        _uiState.update { it.copy(pendingShare = null) }
+        viewModelScope.launch(Dispatchers.IO) { reportExporter.clearSharedCopies() }
     }
 
     fun clearExportMessage() {
@@ -261,6 +263,8 @@ data class AnalyticsUiState(
     val isExporting: Boolean = false,
     /** One-shot result of the last export; cleared once shown. */
     val exportMessage: String? = null,
+    /** A freshly saved report waiting to be offered to the share sheet. */
+    val pendingShare: PendingShare? = null,
     val isSummarising: Boolean = false,
     val narrative: SpendingNarrative? = null,
     val narrativeError: String? = null
@@ -274,5 +278,7 @@ data class AnalyticsUiState(
             snapshot.summary.transactionCount == 0 &&
             snapshot.summary.totalIncome == 0.0
 }
+
+data class PendingShare(val uri: Uri, val format: ReportFormat)
 
 private const val TAG = "AnalyticsViewModel"

@@ -1,20 +1,19 @@
 package com.spendwise.util
 
-import android.content.ContentValues
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
-import androidx.annotation.RequiresApi
+import androidx.core.content.FileProvider
 import com.spendwise.domain.model.Expense
 import com.spendwise.domain.model.ExpenseReport
 import com.spendwise.domain.model.ReportFormat
+import com.spendwise.util.crypto.KeystoreCrypto
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.OutputStream
 import java.io.OutputStreamWriter
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -23,151 +22,138 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Writes a period's report to a user-chosen file.
- *
- * The caller supplies a [Uri] from the system file picker, so the app never
- * needs storage permissions and the user decides where their financial data
- * lands.
- */
 sealed class SaveResult {
-    /** [path] is where the file landed, for showing back to the user. */
-    data class Saved(val path: String) : SaveResult()
+    /** [fileName] identifies the stored report so it can be shared later. */
+    data class Saved(val fileName: String) : SaveResult()
     data class Failed(val message: String) : SaveResult()
 }
 
+/**
+ * Builds and stores a period's report.
+ *
+ * Reports are the densest financial artefact this app produces — one file with
+ * every transaction, merchant and amount for a period. They are therefore kept
+ * inside app-private storage rather than the shared Downloads folder, and
+ * encrypted at rest under a hardware-backed key, so a file manager, another
+ * app, or someone browsing the device's storage finds nothing readable.
+ *
+ * That does mean a saved report is not directly openable from a file browser.
+ * [shareableCopy] is the deliberate way out: it decrypts to a short-lived copy
+ * in cache and hands it to the system share sheet, so the user can put the file
+ * wherever they actually want it while nothing unencrypted lingers on disk.
+ */
 @Singleton
 class ReportExporter @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val keystoreCrypto: KeystoreCrypto
 ) {
 
-    fun write(uri: Uri, report: ExpenseReport, format: ReportFormat) = when (format) {
-        ReportFormat.CSV -> writeCsv(uri, report)
-        ReportFormat.PDF -> writePdf(uri, report)
+    fun write(out: OutputStream, report: ExpenseReport, format: ReportFormat) = when (format) {
+        ReportFormat.CSV -> writeCsv(out, report)
+        ReportFormat.PDF -> writePdf(out, report)
     }
 
     /**
-     * Saves the report into Downloads/IntelSpend and returns where it landed.
+     * Renders the report and stores it encrypted in app-private storage.
      *
-     * Two routes, because the platform changed underneath this. From Android 10
-     * the MediaStore owns shared storage and an app can add to Downloads with no
-     * permission at all; before that, the folder is a plain directory and needs
-     * WRITE_EXTERNAL_STORAGE. The older path is the one that can fail, so it
-     * reports a clear reason rather than an IO exception.
+     * Rendered to a buffer first rather than streamed straight to the file: the
+     * whole point is that no plaintext copy of this ever exists on disk, and a
+     * streaming cipher that failed mid-write could leave a partial one behind.
      */
     fun save(report: ExpenseReport, format: ReportFormat): SaveResult {
-        val fileName = "${report.fileNameStem}.${format.extension}"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveViaMediaStore(fileName, report, format)
-        } else {
-            saveToPublicDirectory(fileName, report, format)
-        }
-    }
-
-    /** True when [save] needs a runtime permission on this device. */
-    fun needsStoragePermission(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
-
-    /** MediaStore's Downloads collection only exists from Android 10; [save] gates the call. */
-    @RequiresApi(Build.VERSION_CODES.Q)
-    private fun saveViaMediaStore(
-        fileName: String,
-        report: ExpenseReport,
-        format: ReportFormat
-    ): SaveResult {
-        val details = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, fileName)
-            put(MediaStore.Downloads.MIME_TYPE, format.mimeType)
-            put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/$FOLDER")
-            // Hides the row until the bytes are there, so a file manager can't
-            // open a half-written report.
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-
-        val resolver = context.contentResolver
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, details)
-            ?: return SaveResult.Failed("Could not create the file in Downloads.")
+        val fileName = uniqueName("${report.fileNameStem}.${format.extension}")
 
         return try {
-            write(uri, report, format)
-            resolver.update(
-                uri,
-                ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) },
-                null,
-                null
-            )
-            SaveResult.Saved(displayPath(fileName))
-        } catch (e: Exception) {
-            // A pending row nobody can see is worse than no row, so clear it.
-            runCatching { resolver.delete(uri, null, null) }
-            Log.w(TAG, "Saving $fileName via MediaStore failed.", e)
-            SaveResult.Failed("Could not save the report.")
-        }
-    }
+            val plaintext = ByteArrayOutputStream().use { buffer ->
+                write(buffer, report, format)
+                buffer.toByteArray()
+            }
 
-    @Suppress("DEPRECATION") // The public directory is the only route before Android 10.
-    private fun saveToPublicDirectory(
-        fileName: String,
-        report: ExpenseReport,
-        format: ReportFormat
-    ): SaveResult {
-        val folder = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            FOLDER
-        )
-        if (!folder.exists() && !folder.mkdirs()) {
-            return SaveResult.Failed("Could not create the IntelSpend folder.")
-        }
+            reportsDir().also { it.mkdirs() }
+                .resolve(fileName + ENCRYPTED_SUFFIX)
+                .writeBytes(keystoreCrypto.encrypt(REPORT_KEY_ALIAS, plaintext))
 
-        val target = uniqueFile(folder, fileName)
-        return try {
-            write(Uri.fromFile(target), report, format)
-            SaveResult.Saved(displayPath(target.name))
+            SaveResult.Saved(fileName)
         } catch (e: Exception) {
-            Log.w(TAG, "Saving ${target.name} to Downloads failed.", e)
+            Log.w(TAG, "Saving $fileName failed.", e)
             SaveResult.Failed("Could not save the report.")
         }
     }
 
     /**
-     * MediaStore appends "(1)" to a clashing name by itself; the legacy path
-     * would silently overwrite last month's report, so it does the same here.
+     * Decrypts a stored report into cache and returns a Uri the share sheet can
+     * read, or null if it is missing or fails its authentication check.
+     *
+     * The decrypted copy lives in cache under a FileProvider path, so it is
+     * still not world-readable — only the app the user picks gets a grant, and
+     * only for that file. [clearSharedCopies] removes them afterwards.
      */
-    private fun uniqueFile(folder: File, fileName: String): File {
+    fun shareableCopy(fileName: String): Uri? = try {
+        val stored = reportsDir().resolve(fileName + ENCRYPTED_SUFFIX)
+        if (!stored.exists()) {
+            null
+        } else {
+            val plaintext = keystoreCrypto.decrypt(REPORT_KEY_ALIAS, stored.readBytes())
+            val shared = sharedDir().also { it.mkdirs() }.resolve(fileName)
+            shared.writeBytes(plaintext)
+
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", shared)
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Preparing $fileName for sharing failed.", e)
+        null
+    }
+
+    /** Deletes decrypted working copies; safe to call whenever the app resumes. */
+    fun clearSharedCopies() {
+        runCatching { sharedDir().listFiles()?.forEach { it.delete() } }
+    }
+
+    fun storedReports(): List<String> =
+        reportsDir().listFiles()
+            .orEmpty()
+            .filter { it.name.endsWith(ENCRYPTED_SUFFIX) }
+            .map { it.name.removeSuffix(ENCRYPTED_SUFFIX) }
+            .sortedDescending()
+
+    private fun reportsDir() = File(context.filesDir, REPORTS_DIR)
+
+    private fun sharedDir() = File(context.cacheDir, SHARED_DIR)
+
+    /** Keeps last month's report rather than overwriting it with this one. */
+    private fun uniqueName(fileName: String): String {
         val stem = fileName.substringBeforeLast('.')
         val extension = fileName.substringAfterLast('.')
-        var candidate = File(folder, fileName)
+        val dir = reportsDir()
+
+        var candidate = fileName
         var index = 1
-        while (candidate.exists()) {
-            candidate = File(folder, "$stem ($index).$extension")
+        while (dir.resolve(candidate + ENCRYPTED_SUFFIX).exists()) {
+            candidate = "$stem ($index).$extension"
             index++
         }
         return candidate
     }
 
-    private fun displayPath(fileName: String) =
-        "${Environment.DIRECTORY_DOWNLOADS}/$FOLDER/$fileName"
-
     /**
      * Charset is explicit because the platform default is not UTF-8 everywhere,
-     * and the previous export mangled every ₹ it wrote. The byte-order mark is
+     * and an earlier export mangled every ₹ it wrote. The byte-order mark is
      * there for Excel, which otherwise reads a UTF-8 CSV as the local codepage
      * and shows the same mojibake.
      */
-    private fun writeCsv(uri: Uri, report: ExpenseReport) {
-        context.contentResolver.openOutputStream(uri)?.use { stream ->
-            OutputStreamWriter(stream, Charsets.UTF_8).use { writer ->
-                writer.write(BOM_CODE_POINT)
-                writer.appendLine(CSV_HEADER)
-                report.transactions.forEach { expense ->
-                    writer.appendLine(expense.toCsvRow())
-                }
+    private fun writeCsv(out: OutputStream, report: ExpenseReport) {
+        OutputStreamWriter(out, Charsets.UTF_8).use { writer ->
+            writer.write(BOM_CODE_POINT)
+            writer.appendLine(CSV_HEADER)
+            report.transactions.forEach { expense ->
+                writer.appendLine(expense.toCsvRow())
             }
-        } ?: error("Could not open $uri for writing")
+        }
     }
 
     private fun Expense.toCsvRow(): String = csvRow(this, isoDate)
 
-    private fun writePdf(uri: Uri, report: ExpenseReport) {
+    private fun writePdf(out: OutputStream, report: ExpenseReport) {
         val document = PdfDocument()
         try {
             val writer = PdfWriter(document, report)
@@ -176,9 +162,7 @@ class ReportExporter @Inject constructor(
             writer.drawCategoryBreakdown()
             writer.drawTransactions()
             writer.finish()
-
-            context.contentResolver.openOutputStream(uri)?.use { document.writeTo(it) }
-                ?: error("Could not open $uri for writing")
+            document.writeTo(out)
         } finally {
             // Held native pages leak if the write throws part-way through.
             document.close()
@@ -375,10 +359,18 @@ class ReportExporter @Inject constructor(
     companion object {
         const val CSV_HEADER = "Date,Title,Merchant,Category,Amount,Currency,Source"
 
-        /** Subfolder of the device's Downloads directory. */
-        const val FOLDER = "IntelSpend"
-
         private const val TAG = "ReportExporter"
+
+        /** Under filesDir — app-private, and excluded from Auto Backup. */
+        private const val REPORTS_DIR = "reports"
+
+        /** Under cacheDir — decrypted copies, cleared after sharing. */
+        private const val SHARED_DIR = "shared_reports"
+
+        /** Named so the stored bytes are never mistaken for a readable PDF or CSV. */
+        private const val ENCRYPTED_SUFFIX = ".enc"
+
+        private const val REPORT_KEY_ALIAS = "spendwise_report_key"
 
         /** Written as a code point: an invisible literal is too easy to lose in an edit. */
         private const val BOM_CODE_POINT = 0xFEFF

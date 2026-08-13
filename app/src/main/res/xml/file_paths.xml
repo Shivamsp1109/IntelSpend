@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Paths this app may hand to other apps through FileProvider.
+
+    Only the decrypted working copies are listed. The stored reports under
+    files/reports are deliberately absent: they are encrypted, nothing else
+    could read them, and exposing the directory would serve no purpose.
+-->
 <paths>
     <cache-path name="captured_images" path="." />
+    <cache-path name="shared_reports" path="shared_reports/" />
 </paths>

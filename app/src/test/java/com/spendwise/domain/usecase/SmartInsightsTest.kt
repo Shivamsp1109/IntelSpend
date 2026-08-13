@@ -170,13 +170,13 @@ class SmartInsightsTest {
                 previousExpense = 15_000.0,
                 count = 40,
                 comparisons = listOf(
-                    CategoryComparison(ExpenseCategory.Food, current = 12_000.0, previous = 6_000.0)
+                    CategoryComparison(ExpenseCategory.FoodDining, current = 12_000.0, previous = 6_000.0)
                 )
             ),
             afterPeriod
         )
 
-        val mover = insights.single { it.title == "Food moved the most" }
+        val mover = insights.single { it.title == "Food & Dining moved the most" }
         assertTrue(mover.description, mover.description.startsWith("Up 100%"))
     }
 
@@ -205,7 +205,7 @@ class SmartInsightsTest {
                 expense = 5_000.0,
                 count = 10,
                 comparisons = listOf(
-                    CategoryComparison(ExpenseCategory.Health, current = 60.0, previous = 10.0)
+                    CategoryComparison(ExpenseCategory.HealthMedical, current = 60.0, previous = 10.0)
                 )
             ),
             afterPeriod
@@ -347,9 +347,9 @@ class SmartInsightsTest {
                 previousExpense = 20_000.0,
                 count = 60,
                 comparisons = listOf(
-                    CategoryComparison(ExpenseCategory.Food, 20_000.0, 5_000.0),
+                    CategoryComparison(ExpenseCategory.FoodDining, 20_000.0, 5_000.0),
                     CategoryComparison(ExpenseCategory.Travel, 8_000.0, 0.0),
-                    CategoryComparison(ExpenseCategory.Bills, 0.0, 4_000.0)
+                    CategoryComparison(ExpenseCategory.Utilities, 0.0, 4_000.0)
                 ),
                 merchants = listOf(MerchantSpend("Swiggy", 20_000.0, 40)),
                 days = mapOf(

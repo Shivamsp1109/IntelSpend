@@ -72,13 +72,16 @@ class NarrativeRequestTest {
             snapshot(
                 categories = mapOf(
                     ExpenseCategory.Travel to 3_000.0,
-                    ExpenseCategory.Food to 12_000.0,
-                    ExpenseCategory.Bills to 7_000.0
+                    ExpenseCategory.FoodDining to 12_000.0,
+                    ExpenseCategory.Utilities to 7_000.0
                 )
             )
         )
 
-        assertEquals(listOf("Food", "Bills", "Travel"), request.topCategories.map { it.name })
+        assertEquals(
+            listOf("Food & Dining", "Utilities", "Travel"),
+            request.topCategories.map { it.name }
+        )
     }
 
     /** Beyond a handful this is padding the prompt, and the user pays per token. */
@@ -135,7 +138,7 @@ class NarrativeRequestTest {
     fun `nothing beyond aggregates is present in the payload`() {
         val request = narrativeRequestFor(
             snapshot(
-                categories = mapOf(ExpenseCategory.Health to 4_000.0),
+                categories = mapOf(ExpenseCategory.HealthMedical to 4_000.0),
                 merchants = listOf(MerchantSpend("Clinic", 4_000.0, 1))
             )
         )

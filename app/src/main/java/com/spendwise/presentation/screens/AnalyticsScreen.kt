@@ -1,8 +1,7 @@
 package com.spendwise.presentation.screens
 
+import android.content.Intent
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendwise.domain.model.AnalyticsPeriod
 import com.spendwise.domain.model.Currency
+import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.model.Insight
 import com.spendwise.domain.model.InsightTone
 import com.spendwise.domain.model.LargestExpense
@@ -87,7 +87,6 @@ import com.spendwise.presentation.components.chartColor
 import com.spendwise.presentation.viewmodel.AnalyticsViewModel
 import com.spendwise.util.CurrencyFormatter
 import com.spendwise.util.DateUtils
-import com.spendwise.util.ReportExporter
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -107,35 +106,24 @@ fun AnalyticsScreen(
     var showRangePicker by remember { mutableStateOf(false) }
     var showExportChooser by remember { mutableStateOf(false) }
 
-    // Held across the permission round trip on older Android, where the format
-    // is chosen before the system asks whether we may write at all.
-    var pendingFormat by remember { mutableStateOf<ReportFormat?>(null) }
-
-    val storagePermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        val format = pendingFormat
-        pendingFormat = null
-        when {
-            format == null -> Unit
-            granted -> viewModel.export(format)
-            else -> viewModel.reportStorageDenied()
-        }
-    }
-
-    fun startExport(format: ReportFormat) {
-        if (viewModel.exportNeedsPermission()) {
-            pendingFormat = format
-            storagePermission.launch(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        } else {
-            viewModel.export(format)
-        }
-    }
-
     LaunchedEffect(state.exportMessage) {
         state.exportMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             viewModel.clearExportMessage()
+        }
+    }
+
+    // The saved report is encrypted inside app storage, so the share sheet is
+    // how the user actually gets hold of it. Offered once, right after saving.
+    LaunchedEffect(state.pendingShare) {
+        state.pendingShare?.let { share ->
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = share.format.mimeType
+                putExtra(Intent.EXTRA_STREAM, share.uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Share report"))
+            viewModel.clearPendingShare()
         }
     }
 
@@ -246,7 +234,7 @@ fun AnalyticsScreen(
             onDismiss = { showExportChooser = false },
             onPick = { format ->
                 showExportChooser = false
-                startExport(format)
+                viewModel.export(format)
             }
         )
     }
@@ -269,7 +257,8 @@ private fun ExportChooserDialog(
             Text(
                 "CSV opens in a spreadsheet. PDF is a formatted report with " +
                     "totals and a category breakdown.\n\n" +
-                    "Saved to Download/${ReportExporter.FOLDER} on this phone.",
+                    "Stored encrypted inside the app. You'll be offered somewhere " +
+                    "to send it once it's ready.",
                 style = MaterialTheme.typography.bodySmall
             )
         },
@@ -294,7 +283,11 @@ private fun AnalyticsContent(
 ) {
     val currency = snapshot.currency
     val summary = snapshot.summary
-    val categories = snapshot.byCategory.toList().sortedByDescending { it.second }
+    // Ranked, with the tail folded into one slice. Twenty-two categories is the
+    // right number to *record* against but not to draw: past a handful the
+    // slices are slivers, the legend is longer than the chart, and the shape
+    // stops being readable at a glance. The full ranking is still below it.
+    val categories = groupTail(snapshot.byCategory.toList().sortedByDescending { it.second })
 
     if (snapshot.excludedCurrencies.isNotEmpty()) {
         CurrencyNotice(
@@ -403,8 +396,9 @@ private fun AnalyticsContent(
                 CategoryDonut(slices = categories, currency = currency)
             }
             Spacer(Modifier.height(18.dp))
+            // The list shows every category in full — only the donut groups.
             CategoryBreakdownList(
-                slices = categories,
+                slices = snapshot.byCategory.toList().sortedByDescending { it.second },
                 changes = snapshot.categoryChange,
                 currency = currency
             )
@@ -814,6 +808,29 @@ private fun changeColor(changePercent: Double?): Color = when {
     else -> SpendWiseGreen
 }
 
+/**
+ * Keeps the largest categories and folds the rest into Other.
+ *
+ * A donut is read by comparing wedge sizes, which stops working once the wedges
+ * are slivers — and with twenty-two categories most of them are. Grouping the
+ * tail keeps the chart answering the question it is good at ("what dominates?")
+ * while the ranked list underneath still shows everything.
+ *
+ * Any existing Other is merged in rather than duplicated.
+ */
+private fun groupTail(
+    ranked: List<Pair<ExpenseCategory, Double>>,
+    keep: Int = MAX_DONUT_SLICES
+): List<Pair<ExpenseCategory, Double>> {
+    if (ranked.size <= keep) return ranked
+
+    val head = ranked.take(keep).filterNot { it.first == ExpenseCategory.Other }
+    val tail = ranked.drop(keep).sumOf { it.second } +
+        ranked.take(keep).filter { it.first == ExpenseCategory.Other }.sumOf { it.second }
+
+    return if (tail > 0.0) head + (ExpenseCategory.Other to tail) else head
+}
+
 private fun previousPeriodName(type: PeriodType): String = when (type) {
     PeriodType.DAY -> "the day before"
     PeriodType.WEEK -> "last week"
@@ -821,6 +838,9 @@ private fun previousPeriodName(type: PeriodType): String = when (type) {
     PeriodType.YEAR -> "last year"
     PeriodType.CUSTOM -> "the period before"
 }
+
+/** About as many wedges as stay distinguishable in a donut this size. */
+private const val MAX_DONUT_SLICES = 7
 
 /** Below a fortnight a calendar grid holds one or two rows and shows no pattern. */
 private const val MIN_HEATMAP_DAYS = 14
