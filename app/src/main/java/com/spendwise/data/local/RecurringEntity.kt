@@ -7,9 +7,13 @@ import androidx.room.Index
 import androidx.room.Junction
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import com.spendwise.domain.model.Currency
+import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.model.RecurringCadence
 import com.spendwise.domain.model.RecurringEntry
+import com.spendwise.domain.model.RecurringSource
 import com.spendwise.domain.model.RecurringType
+import com.spendwise.domain.model.TransactionNature
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RecurringEntity
@@ -25,7 +29,24 @@ data class RecurringEntity(
     val cadence: String,
     /** [RecurringType] name, e.g. "FIXED". */
     val type: String,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    /**
+     * ISO 4217 code. An amount without one is ambiguous, and detection must never
+     * average a ₹ series together with a $ series.
+     */
+    val currency: String = Currency.INR.code,
+    /**
+     * [TransactionNature] name, carried over from the payments this was inferred
+     * from. Decides whether this commitment is consumption, debt repayment or
+     * asset building — see [RecurringEntry].
+     */
+    val nature: String = TransactionNature.Spending.name,
+    /** [ExpenseCategory] label, e.g. "Subscriptions". */
+    val category: String = ExpenseCategory.Other.label,
+    /** [RecurringSource] name: whether the user entered this or the app found it. */
+    val source: String = RecurringSource.MANUAL.name,
+    val occurrenceCount: Int = 0,
+    val confidence: Double = 1.0
 )
 
 fun RecurringEntity.toDomain(): RecurringEntry = RecurringEntry(
@@ -33,7 +54,13 @@ fun RecurringEntity.toDomain(): RecurringEntry = RecurringEntry(
     title = title,
     amount = amount,
     cadence = RecurringCadence.fromName(cadence),
-    type = RecurringType.fromName(type)
+    type = RecurringType.fromName(type),
+    currency = Currency.fromCode(currency),
+    nature = TransactionNature.fromName(nature),
+    category = ExpenseCategory.fromLabel(category),
+    source = RecurringSource.fromName(source),
+    occurrenceCount = occurrenceCount,
+    confidence = confidence
 )
 
 fun RecurringEntry.toEntity(): RecurringEntity = RecurringEntity(
@@ -41,7 +68,47 @@ fun RecurringEntry.toEntity(): RecurringEntity = RecurringEntity(
     title = title,
     amount = amount,
     cadence = cadence.name,
-    type = type.name
+    type = type.name,
+    currency = currency.code,
+    nature = nature.name,
+    category = category.label,
+    source = source.name,
+    occurrenceCount = occurrenceCount,
+    confidence = confidence
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dismissed detection candidates
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A repeating pattern the user has said is not a commitment.
+ *
+ * Kept in its own table rather than as a [RecurringEntity] with a "dismissed"
+ * flag, because the two are not the same kind of thing. A recurring entry has a
+ * title, an amount and a cadence the user stands behind; a dismissal is just a
+ * signature to skip, and storing one as the other would mean inventing
+ * placeholder values that no screen should ever show and no total should count.
+ *
+ * [lastSeenAmount] and [cadence] record what was rejected, so a dismissal can be
+ * reconsidered rather than being permanent. Someone who dismisses an irregular
+ * trickle of payments to a shop should still be told when that shop later starts
+ * charging them the same amount every month — the pattern genuinely changed, and
+ * a blanket "never mention this merchant again" would hide it.
+ */
+@Entity(tableName = "dismissed_recurring_candidates")
+data class DismissedRecurringCandidateEntity(
+    /** [com.spendwise.domain.model.RecurringCandidate.signature]. */
+    @PrimaryKey
+    val signature: String,
+    val merchant: String,
+    val currency: String,
+    val nature: String,
+    val category: String,
+    val cadence: String,
+    val lastSeenAmount: Double,
+    val lastSeenOccurrenceDate: Long,
+    val dismissedAt: Long
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

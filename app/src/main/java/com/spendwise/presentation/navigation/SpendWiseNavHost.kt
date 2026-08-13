@@ -13,6 +13,7 @@ import com.spendwise.presentation.screens.LoginScreen
 import com.spendwise.presentation.screens.NotificationsScreen
 import com.spendwise.presentation.screens.ProfileScreen
 import com.spendwise.presentation.screens.RecategoriseScreen
+import com.spendwise.presentation.screens.RecurringScreen
 import com.spendwise.presentation.screens.SplashScreen
 import com.spendwise.presentation.viewmodel.AuthViewModel
 
@@ -86,6 +87,9 @@ fun SpendWiseNavHost() {
         composable(Routes.Recategorise.route) {
             RecategoriseScreen(onNavigateUp = { navController.popBackStack() })
         }
+        composable(Routes.Recurring.route) {
+            RecurringScreen(onNavigateUp = { navController.popBackStack() })
+        }
         composable(Routes.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
@@ -94,6 +98,7 @@ fun SpendWiseNavHost() {
                 onAddExpense = { navController.navigate(Routes.AddExpense.route) },
                 onAnalytics = { navController.navigate(Routes.Analytics.route) },
                 onFixCategories = { navController.navigate(Routes.Recategorise.route) },
+                onRecurringPayments = { navController.navigate(Routes.Recurring.route) },
                 onLogout = {
                     navController.navigate(Routes.Login.route) {
                         popUpTo(Routes.Home.route) { inclusive = true }

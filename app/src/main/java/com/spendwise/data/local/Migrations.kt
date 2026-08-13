@@ -261,3 +261,59 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         }
     }
 }
+
+/**
+ * Room migration from schema version 9 → 10.
+ *
+ * Prepares recurring entries to be found automatically rather than only typed in.
+ *
+ * **Currency.** An amount with no currency is ambiguous, and detection must
+ * never average a rupee series together with a dollar one. Existing rows default
+ * to INR, which is what the app has stored everywhere else by default.
+ *
+ * **Nature and category.** A recurring entry previously knew only its title,
+ * amount and cadence, which is enough to display it and nothing else. Rent, a
+ * loan EMI and a monthly investment are all "the same amount every month", but
+ * one is consumption, one repays debt and one buys an asset — a single figure
+ * summing all three describes none of them. Existing rows default to Spending
+ * and Other: every entry that exists today was hand-entered, and inferring a
+ * nature for it retrospectively would be guessing at the user's own money.
+ *
+ * **Source and confidence.** Detection produces guesses, and a guess the user
+ * accepted should stay distinguishable from a fact they asserted. Existing rows
+ * are MANUAL with confidence 1.0, which is exactly what they are.
+ *
+ * **Dismissals** get their own table rather than a flag on `recurring`. A
+ * rejected pattern has no title, amount or cadence anyone stands behind, so
+ * storing it as a recurring entry would mean inventing values that no screen
+ * should show and no total should count. Recording what was rejected — the
+ * amount and cadence, not just the merchant — lets a dismissal be revisited if
+ * the pattern later changes into a genuine commitment.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `currency` TEXT NOT NULL DEFAULT 'INR'")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `nature` TEXT NOT NULL DEFAULT 'Spending'")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `category` TEXT NOT NULL DEFAULT 'Other'")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `source` TEXT NOT NULL DEFAULT 'MANUAL'")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `occurrenceCount` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `confidence` REAL NOT NULL DEFAULT 1.0")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `dismissed_recurring_candidates` (
+                `signature` TEXT NOT NULL,
+                `merchant` TEXT NOT NULL,
+                `currency` TEXT NOT NULL,
+                `nature` TEXT NOT NULL,
+                `category` TEXT NOT NULL,
+                `cadence` TEXT NOT NULL,
+                `lastSeenAmount` REAL NOT NULL,
+                `lastSeenOccurrenceDate` INTEGER NOT NULL,
+                `dismissedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`signature`)
+            )
+            """.trimIndent()
+        )
+    }
+}

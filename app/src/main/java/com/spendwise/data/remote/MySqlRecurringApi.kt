@@ -24,4 +24,10 @@ interface MySqlRecurringApi {
         @Header("Authorization") bearerToken: String,
         @Body link: RecurringLinkPayload
     ): Response<Unit>
+
+    @POST("recurring/dismissals")
+    suspend fun upsertDismissal(
+        @Header("Authorization") bearerToken: String,
+        @Body dismissal: RecurringDismissalPayload
+    ): Response<Unit>
 }

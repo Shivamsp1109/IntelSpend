@@ -1,6 +1,7 @@
 package com.spendwise.data.remote
 
 import com.google.firebase.auth.FirebaseAuth
+import com.spendwise.data.local.DismissedRecurringCandidateEntity
 import com.spendwise.data.local.RecurringEntity
 import kotlinx.coroutines.tasks.await
 import retrofit2.HttpException
@@ -39,6 +40,16 @@ class MySqlRecurringDataSource @Inject constructor(
                 recurringLocalId = recurringId,
                 expenseLocalId = expenseId
             )
+        )
+        if (!response.isSuccessful) throw HttpException(response)
+    }
+
+    suspend fun upsertDismissal(dismissal: DismissedRecurringCandidateEntity) {
+        val uid = firebaseAuth.currentUser?.uid
+            ?: error("Cannot sync a dismissal without an authenticated Firebase user.")
+        val response = api.upsertDismissal(
+            bearerToken = bearerToken(),
+            dismissal = dismissal.toSyncPayload(uid = uid)
         )
         if (!response.isSuccessful) throw HttpException(response)
     }

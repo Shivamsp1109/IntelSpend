@@ -26,14 +26,26 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         amount,
         cadence,
         type,
+        currency,
+        nature,
+        category,
+        source,
+        occurrence_count,
+        confidence,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        title      = VALUES(title),
-        amount     = VALUES(amount),
-        cadence    = VALUES(cadence),
-        type       = VALUES(type),
-        updated_at = VALUES(updated_at)`,
+        title            = VALUES(title),
+        amount           = VALUES(amount),
+        cadence          = VALUES(cadence),
+        type             = VALUES(type),
+        currency         = VALUES(currency),
+        nature           = VALUES(nature),
+        category         = VALUES(category),
+        source           = VALUES(source),
+        occurrence_count = VALUES(occurrence_count),
+        confidence       = VALUES(confidence),
+        updated_at       = VALUES(updated_at)`,
       [
         req.user.uid,
         Number(entry.localId),
@@ -41,6 +53,14 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         Number(entry.amount),
         entry.cadence,
         entry.type,
+        // Defaulted rather than required, so an older client that does not send
+        // these can still sync instead of having every request rejected.
+        entry.currency || 'INR',
+        entry.nature || 'Spending',
+        entry.category || 'Other',
+        entry.source || 'MANUAL',
+        Number.isFinite(Number(entry.occurrenceCount)) ? Number(entry.occurrenceCount) : 0,
+        clampConfidence(entry.confidence),
         Date.now()
       ]
     );
@@ -99,6 +119,74 @@ router.delete('/link', requireFirebaseAuth, requireSameUser, syncLimiter, async 
     return next(error);
   }
 });
+
+/**
+ * POST /recurring/dismissals
+ * Records a detection the user rejected, so a reinstall does not resurrect it.
+ * Body: { uid, signature, merchant, currency, nature, category, cadence,
+ *         lastSeenAmount, lastSeenOccurrenceDate, dismissedAt }
+ */
+router.post('/dismissals', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
+  try {
+    const dismissal = req.body;
+    if (!dismissal) throw createBadRequest('Missing dismissal body.');
+    if (!dismissal.uid) throw createBadRequest('Missing uid.');
+    if (!dismissal.signature || typeof dismissal.signature !== 'string') {
+      throw createBadRequest('Invalid signature.');
+    }
+    if (!dismissal.cadence || typeof dismissal.cadence !== 'string') {
+      throw createBadRequest('Invalid cadence.');
+    }
+
+    await ensureUserExists(req.user.uid, req.user.email);
+
+    await pool.execute(
+      `INSERT INTO dismissed_recurring_candidates (
+        uid,
+        signature,
+        merchant,
+        currency,
+        nature,
+        category,
+        cadence,
+        last_seen_amount,
+        last_seen_occurrence_date,
+        dismissed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        merchant                  = VALUES(merchant),
+        cadence                   = VALUES(cadence),
+        last_seen_amount          = VALUES(last_seen_amount),
+        last_seen_occurrence_date = VALUES(last_seen_occurrence_date),
+        dismissed_at              = VALUES(dismissed_at)`,
+      [
+        req.user.uid,
+        dismissal.signature.slice(0, 512),
+        String(dismissal.merchant || '').slice(0, 255),
+        dismissal.currency || 'INR',
+        dismissal.nature || 'Spending',
+        dismissal.category || 'Other',
+        dismissal.cadence,
+        Number.isFinite(Number(dismissal.lastSeenAmount)) ? Number(dismissal.lastSeenAmount) : 0,
+        Number.isFinite(Number(dismissal.lastSeenOccurrenceDate))
+          ? Number(dismissal.lastSeenOccurrenceDate)
+          : 0,
+        Number.isFinite(Number(dismissal.dismissedAt)) ? Number(dismissal.dismissedAt) : Date.now()
+      ]
+    );
+
+    return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/** A score outside [0, 1] is meaningless; store something sane rather than refuse. */
+function clampConfidence(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(0, Math.min(1, parsed));
+}
 
 function validateRecurring(entry) {
   if (!entry) throw createBadRequest('Missing recurring body.');

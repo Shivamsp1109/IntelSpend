@@ -12,9 +12,10 @@ import androidx.room.RoomDatabase
         RecurringExpenseCrossRef::class,
         ExpenseDeleteSyncEntity::class,
         IncomeDeleteSyncEntity::class,
-        LearnedCategoryEntity::class
+        LearnedCategoryEntity::class,
+        DismissedRecurringCandidateEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = true
 )
 abstract class SpendWiseDatabase : RoomDatabase() {

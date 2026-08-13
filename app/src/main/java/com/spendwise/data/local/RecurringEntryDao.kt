@@ -69,4 +69,19 @@ interface RecurringEntryDao {
         """
     )
     suspend fun getRecurringForExpense(expenseId: Int): RecurringEntity?
+
+    // ── Dismissed detection candidates ────────────────────────────────────────
+
+    @Query("SELECT * FROM dismissed_recurring_candidates")
+    suspend fun getDismissedCandidates(): List<DismissedRecurringCandidateEntity>
+
+    @Query("SELECT * FROM dismissed_recurring_candidates")
+    fun observeDismissedCandidates(): Flow<List<DismissedRecurringCandidateEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDismissedCandidate(candidate: DismissedRecurringCandidateEntity)
+
+    /** Used when a dismissal is reconsidered, so the candidate can surface again. */
+    @Query("DELETE FROM dismissed_recurring_candidates WHERE signature = :signature")
+    suspend fun deleteDismissedCandidate(signature: String)
 }

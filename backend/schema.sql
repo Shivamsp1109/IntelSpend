@@ -94,9 +94,50 @@ CREATE TABLE IF NOT EXISTS recurring (
     cadence    VARCHAR(20) NOT NULL,
     -- RecurringType enum name, e.g. 'FIXED', 'VARIABLE', 'ONE_TIME'
     type       VARCHAR(20) NOT NULL,
+    currency   VARCHAR(10) NOT NULL DEFAULT 'INR',
+    -- TransactionNature enum name. Decides whether this commitment is
+    -- consumption, debt repayment or asset building — rent, an EMI and a monthly
+    -- SIP are all "the same amount every month" and must never be summed as one.
+    nature     VARCHAR(30) NOT NULL DEFAULT 'Spending',
+    -- ExpenseCategory label, e.g. 'Subscriptions'
+    category   VARCHAR(100) NOT NULL DEFAULT 'Other',
+    -- RecurringSource enum name: 'MANUAL' or 'DETECTED'
+    source     VARCHAR(20) NOT NULL DEFAULT 'MANUAL',
+    -- How many historical payments a detection was inferred from, and how sure
+    -- it was. Both are 0 / 1.0 for a hand-entered commitment.
+    occurrence_count INT NOT NULL DEFAULT 0,
+    confidence DOUBLE NOT NULL DEFAULT 1,
     updated_at BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_recurring (uid, local_id),
     CONSTRAINT fk_recurring_user
+        FOREIGN KEY (uid) REFERENCES users(uid)
+        ON DELETE CASCADE
+);
+
+-- Patterns the user has said are not commitments.
+--
+-- Synced so a reinstall does not resurrect every suggestion they already
+-- rejected — being asked the same questions again after restoring a backup is
+-- the fastest way to make a feature feel broken.
+CREATE TABLE IF NOT EXISTS dismissed_recurring_candidates (
+    id                        INT AUTO_INCREMENT PRIMARY KEY,
+    uid                       VARCHAR(128) NOT NULL,
+    signature                 VARCHAR(512) NOT NULL,
+    merchant                  VARCHAR(255) NOT NULL,
+    currency                  VARCHAR(10) NOT NULL DEFAULT 'INR',
+    nature                    VARCHAR(30) NOT NULL DEFAULT 'Spending',
+    category                  VARCHAR(100) NOT NULL DEFAULT 'Other',
+    cadence                   VARCHAR(20) NOT NULL,
+    -- What was rejected, not just who. A dismissal is reconsidered when the
+    -- charge changes materially, so the old amount has to be remembered.
+    last_seen_amount          DOUBLE NOT NULL DEFAULT 0,
+    last_seen_occurrence_date BIGINT NOT NULL DEFAULT 0,
+    dismissed_at              BIGINT NOT NULL DEFAULT 0,
+    -- Prefix-bounded because MySQL caps an index key at 3072 bytes and a utf8mb4
+    -- VARCHAR(512) exceeds it; 191 characters is far more than any real
+    -- merchant-plus-category signature needs.
+    UNIQUE KEY unique_user_dismissal (uid, signature(191)),
+    CONSTRAINT fk_dismissal_user
         FOREIGN KEY (uid) REFERENCES users(uid)
         ON DELETE CASCADE
 );
@@ -167,3 +208,19 @@ CREATE TABLE IF NOT EXISTS llm_usage (
 -- ALTER TABLE incomes  ADD COLUMN reference VARCHAR(64) DEFAULT NULL;
 -- ALTER TABLE expenses ADD COLUMN date_is_assumed TINYINT(1) NOT NULL DEFAULT 0;
 -- ALTER TABLE incomes  ADD COLUMN date_is_assumed TINYINT(1) NOT NULL DEFAULT 0;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Recurring-payment detection upgrade (run on any database created before it)
+--
+-- As above, the server refuses to start without these rather than failing every
+-- recurring sync, so if startup told you to run something, it is below. The
+-- dismissed_recurring_candidates table is created by the CREATE above on a
+-- fresh install; on an existing database, run that statement too.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ALTER TABLE recurring ADD COLUMN currency VARCHAR(10) NOT NULL DEFAULT 'INR';
+-- ALTER TABLE recurring ADD COLUMN nature VARCHAR(30) NOT NULL DEFAULT 'Spending';
+-- ALTER TABLE recurring ADD COLUMN category VARCHAR(100) NOT NULL DEFAULT 'Other';
+-- ALTER TABLE recurring ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'MANUAL';
+-- ALTER TABLE recurring ADD COLUMN occurrence_count INT NOT NULL DEFAULT 0;
+-- ALTER TABLE recurring ADD COLUMN confidence DOUBLE NOT NULL DEFAULT 1;

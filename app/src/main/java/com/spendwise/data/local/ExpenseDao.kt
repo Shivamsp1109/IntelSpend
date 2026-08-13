@@ -20,6 +20,17 @@ data class MerchantGroupRow(
     val currency: String
 )
 
+/** A single dated payment, for working out whether a merchant repeats. */
+data class ExpenseTimeSeriesRow(
+    val expenseId: Int,
+    val merchant: String,
+    val date: Long,
+    val amount: Double,
+    val category: String,
+    val nature: String,
+    val currency: String
+)
+
 @Dao
 interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY date DESC")
@@ -77,6 +88,42 @@ interface ExpenseDao {
         """
     )
     fun observeMerchantGroups(): Flow<List<MerchantGroupRow>>
+
+    /**
+     * Individual dated payments per merchant, for recurring-payment detection.
+     *
+     * Deliberately not the grouped query above. Working out that something
+     * repeats monthly needs the gaps *between* payments, and an aggregate has
+     * already thrown those away — a count and a total cannot tell rent from
+     * thirty unrelated purchases at the same shop.
+     *
+     * Four natures qualify, not just spending. An EMI is a LoanRepayment and a
+     * monthly SIP is an Investment; both are commitments the user must meet, and
+     * filtering to Spending alone — as every other list in this app does — would
+     * make the two most important fixed payments in a household budget invisible
+     * to the one feature meant to find them.
+     *
+     * CreditCardPayment is excluded on purpose. A card bill arrives every month
+     * like clockwork, but its amount is whatever was spent that month, so it is
+     * a repeating *event* rather than a fixed commitment, and treating it as one
+     * would put a number in the user's obligations that means nothing.
+     */
+    @Query(
+        """
+        SELECT id       AS expenseId,
+               merchant AS merchant,
+               date     AS date,
+               amount   AS amount,
+               category AS category,
+               nature   AS nature,
+               currency AS currency
+        FROM expenses
+        WHERE merchant IS NOT NULL AND merchant != ''
+          AND nature IN ('Spending', 'LoanRepayment', 'Investment', 'Savings')
+        ORDER BY merchant ASC, date ASC
+        """
+    )
+    fun observeExpenseTimeSeries(): Flow<List<ExpenseTimeSeriesRow>>
 
     /**
      * Re-files every row for one merchant that currently sits under the given
