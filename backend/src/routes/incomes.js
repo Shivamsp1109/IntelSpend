@@ -1,6 +1,8 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { syncLimiter } = require('../middleware/rateLimit');
+const { pageParams, page } = require('../services/pagination');
 
 const router = express.Router();
 
@@ -9,7 +11,7 @@ const router = express.Router();
  * Upserts an income record for the authenticated user.
  * Body: { uid, localId, title, amount, currency, source, note?, date }
  */
-router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const income = req.body;
     validateIncome(income);
@@ -26,8 +28,10 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         source,
         note,
         income_date,
+        reference,
+        date_is_assumed,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         title       = VALUES(title),
         amount      = VALUES(amount),
@@ -35,6 +39,8 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         source      = VALUES(source),
         note        = VALUES(note),
         income_date = VALUES(income_date),
+        reference   = VALUES(reference),
+        date_is_assumed = VALUES(date_is_assumed),
         updated_at  = VALUES(updated_at)`,
       [
         req.user.uid,
@@ -45,11 +51,48 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         income.source,
         income.note       ?? null,
         Number(income.date),
+        income.reference  ?? null,
+        income.dateIsAssumed ? 1 : 0,
         Date.now()
       ]
     );
 
     return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/** The caller's own incomes, for rebuilding a device. See expenses GET /. */
+router.get('/', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
+  try {
+    const { after, limit } = pageParams(req.query);
+
+    const [rows] = await pool.execute(
+      `SELECT local_id AS localId,
+              title,
+              amount,
+              currency,
+              source,
+              note,
+              income_date AS date,
+              reference,
+              date_is_assumed
+         FROM incomes
+        WHERE uid = ? AND local_id > ?
+        ORDER BY local_id ASC
+        LIMIT ${limit}`,
+      [req.user.uid, after]
+    );
+
+    // See the expenses route: TINYINT(1) arrives as a number, and the client
+    // expects a JSON boolean.
+    return res.json(page(
+      rows.map(({ date_is_assumed: assumed, ...rest }) => (
+        { ...rest, dateIsAssumed: assumed === 1 }
+      )),
+      limit
+    ));
   } catch (error) {
     return next(error);
   }
@@ -82,7 +125,7 @@ function createBadRequest(message) {
   return error;
 }
 
-router.delete('/sync/:localId', requireFirebaseAuth, async (req, res, next) => {
+router.delete('/sync/:localId', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
   try {
     const localId = req.params.localId;
     if (!Number.isFinite(Number(localId))) throw createBadRequest('Invalid localId.');

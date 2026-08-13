@@ -1,10 +1,11 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { syncLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-router.get('/:uid', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.get('/:uid', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const [rows] = await pool.execute(
       `SELECT
@@ -35,7 +36,7 @@ router.get('/:uid', requireFirebaseAuth, requireSameUser, async (req, res, next)
   }
 });
 
-router.put('/:uid', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.put('/:uid', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const profile = req.body;
     const providers = JSON.stringify(Array.isArray(profile.providers) ? profile.providers : []);

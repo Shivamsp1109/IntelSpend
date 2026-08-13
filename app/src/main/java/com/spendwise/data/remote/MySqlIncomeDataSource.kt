@@ -22,6 +22,27 @@ class MySqlIncomeDataSource @Inject constructor(
         if (!response.isSuccessful) throw HttpException(response)
     }
 
+    /** Every income the server holds for this user; see fetchAllExpenses. */
+    suspend fun fetchAllIncomes(): List<IncomeSyncPayload> {
+        val user = firebaseAuth.currentUser
+            ?: error("Cannot reach the server without an authenticated Firebase user.")
+        val token = user.getIdToken(false).await().token
+            ?: error("Cannot reach the server without a Firebase ID token.")
+
+        val collected = mutableListOf<IncomeSyncPayload>()
+        var after = 0
+
+        repeat(MAX_PAGES) {
+            val response = api.listIncomes("Bearer $token", after = after, limit = PAGE_SIZE)
+            if (!response.isSuccessful) throw HttpException(response)
+
+            val page = response.body() ?: return collected
+            collected += page.items
+            after = page.nextAfter ?: return collected
+        }
+        return collected
+    }
+
     suspend fun deleteIncome(localId: Int) {
         val user = firebaseAuth.currentUser
             ?: error("Cannot delete income without an authenticated Firebase user.")
@@ -32,6 +53,11 @@ class MySqlIncomeDataSource @Inject constructor(
             localId = localId
         )
         if (!response.isSuccessful && response.code() != 404) throw HttpException(response)
+    }
+
+    private companion object {
+        const val PAGE_SIZE = 200
+        const val MAX_PAGES = 500
     }
 }
 

@@ -35,17 +35,22 @@ import androidx.compose.ui.unit.dp
 import com.spendwise.R
 import com.spendwise.presentation.components.PurpleGradient
 import com.spendwise.presentation.components.SpendWisePurple
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendwise.presentation.viewmodel.AuthViewModel
+import com.spendwise.presentation.viewmodel.RestoreState
+import com.spendwise.presentation.viewmodel.RestoreViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
     authViewModel: AuthViewModel,
     onLoggedIn: () -> Unit,
-    onLoggedOut: () -> Unit
+    onLoggedOut: () -> Unit,
+    restoreViewModel: RestoreViewModel = hiltViewModel()
 ) {
     val user by authViewModel.currentUser.collectAsState()
     val isAuthResolved by authViewModel.isAuthResolved.collectAsState()
+    val restoreState by restoreViewModel.state.collectAsState()
     val logoTransition = rememberInfiniteTransition(label = "logo")
     val logoScale by logoTransition.animateFloat(
         initialValue = 0.96f,
@@ -75,8 +80,17 @@ fun SplashScreen(
         label = "logoGlow"
     )
 
+    // A signed-in user whose device holds nothing has either just reinstalled or
+    // is on a new handset. Their history is on the server, so it is pulled back
+    // before the app opens onto what would otherwise look like an empty account.
     LaunchedEffect(user) {
         if (user != null) {
+            restoreViewModel.restoreIfNeeded()
+        }
+    }
+
+    LaunchedEffect(user, restoreState) {
+        if (user != null && restoreState is RestoreState.Done) {
             delay(900)
             onLoggedIn()
         }
@@ -125,11 +139,20 @@ fun SplashScreen(
             }
             Spacer(Modifier.height(26.dp))
             Text("SpendWise", color = Color.White, style = MaterialTheme.typography.headlineLarge)
-            Text("Track. Analyze. Save Better.", color = Color.White.copy(alpha = 0.82f))
+            Text(
+                text = if (restoreState is RestoreState.Working) {
+                    "Restoring your transactions…"
+                } else {
+                    "Track. Analyze. Save Better."
+                },
+                color = Color.White.copy(alpha = 0.82f)
+            )
             Spacer(Modifier.height(70.dp))
             Button(
                 onClick = { if (user == null) onLoggedOut() else onLoggedIn() },
-                enabled = isAuthResolved,
+                // Held while a restore is in flight, so tapping through cannot
+                // land the user on an empty home screen that fills in behind them.
+                enabled = isAuthResolved && restoreState !is RestoreState.Working,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = SpendWisePurple),
                 shape = RoundedCornerShape(16.dp)
             ) {

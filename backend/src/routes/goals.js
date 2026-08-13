@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { syncLimiter } = require('../middleware/rateLimit');
 const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
@@ -10,7 +11,7 @@ const router = express.Router();
  * Upserts a savings goal for the authenticated user.
  * Body: { uid, localId, type, targetAmount, targetDate, currentSaved, monthlyContribution }
  */
-router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const goal = req.body;
     validateGoal(goal);

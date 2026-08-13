@@ -1,11 +1,13 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { syncLimiter } = require('../middleware/rateLimit');
+const { pageParams, page } = require('../services/pagination');
 const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
 
-router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const expense = req.body;
     validateExpense(expense);
@@ -23,8 +25,10 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         merchant,
         currency,
         source,
+        reference,
+        date_is_assumed,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         title        = VALUES(title),
         amount       = VALUES(amount),
@@ -33,6 +37,8 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         merchant     = VALUES(merchant),
         currency     = VALUES(currency),
         source       = VALUES(source),
+        reference    = VALUES(reference),
+        date_is_assumed = VALUES(date_is_assumed),
         updated_at   = VALUES(updated_at)`,
       [
         req.user.uid,
@@ -44,6 +50,8 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
         expense.merchant ?? null,
         expense.currency || 'INR',
         expense.source   || 'MANUAL',
+        expense.reference ?? null,
+        expense.dateIsAssumed ? 1 : 0,
         Date.now()
       ]
     );
@@ -54,7 +62,52 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
   }
 });
 
-router.delete('/sync/:localId', requireFirebaseAuth, async (req, res, next) => {
+/**
+ * The caller's own expenses, oldest local_id first, for rebuilding a device.
+ *
+ * Scoped to req.user.uid from the verified token — never to anything the
+ * client sends — so no request can read another account's transactions.
+ */
+router.get('/', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
+  try {
+    const { after, limit } = pageParams(req.query);
+
+    const [rows] = await pool.execute(
+      `SELECT local_id AS localId,
+              title,
+              amount,
+              category,
+              expense_date AS date,
+              merchant,
+              currency,
+              source,
+              reference,
+              date_is_assumed
+         FROM expenses
+        WHERE uid = ? AND local_id > ?
+        ORDER BY local_id ASC
+        LIMIT ${limit}`,
+      [req.user.uid, after]
+    );
+
+    return res.json(page(rows.map(toClientShape), limit));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * MySQL returns TINYINT(1) as a number, and the client deserialises this field
+ * as a boolean — a JSON `1` where `true` is expected fails outright rather than
+ * degrading. Converted here rather than in SQL so it does not depend on driver
+ * type-casting behaviour.
+ */
+function toClientShape(row) {
+  const { date_is_assumed: dateIsAssumed, ...rest } = row;
+  return { ...rest, dateIsAssumed: dateIsAssumed === 1 };
+}
+
+router.delete('/sync/:localId', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
   try {
     const localId = req.params.localId;
     if (!Number.isFinite(Number(localId))) throw createBadRequest('Invalid localId.');

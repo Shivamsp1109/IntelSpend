@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
+const { syncLimiter } = require('../middleware/rateLimit');
 const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
@@ -10,7 +11,7 @@ const router = express.Router();
  * Upserts a recurring entry for the authenticated user.
  * Body: { uid, localId, title, amount, cadence, type }
  */
-router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const entry = req.body;
     validateRecurring(entry);
@@ -55,7 +56,7 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, async (req, res, next
  * Links an expense to a recurring entry (upserts the cross-ref row).
  * Body: { uid, recurringLocalId, expenseLocalId }
  */
-router.post('/link', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.post('/link', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const { uid, recurringLocalId, expenseLocalId } = req.body;
     if (!uid) throw createBadRequest('Missing uid.');
@@ -80,7 +81,7 @@ router.post('/link', requireFirebaseAuth, requireSameUser, async (req, res, next
  * Removes a cross-ref row (unlinks an expense from a recurring entry).
  * Body: { uid, recurringLocalId, expenseLocalId }
  */
-router.delete('/link', requireFirebaseAuth, requireSameUser, async (req, res, next) => {
+router.delete('/link', requireFirebaseAuth, requireSameUser, syncLimiter, async (req, res, next) => {
   try {
     const { uid, recurringLocalId, expenseLocalId } = req.body;
     if (!uid) throw createBadRequest('Missing uid.');

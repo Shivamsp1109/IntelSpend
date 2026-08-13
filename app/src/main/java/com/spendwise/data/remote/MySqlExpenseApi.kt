@@ -12,6 +12,19 @@ interface MySqlExpenseApi {
         @Body expense: ExpenseSyncPayload
     ): Response<Unit>
 
+    /**
+     * One page of the user's stored expenses, for rebuilding a device.
+     *
+     * [after] is the last localId already received; the server returns rows
+     * beyond it in id order.
+     */
+    @retrofit2.http.GET("expenses")
+    suspend fun listExpenses(
+        @Header("Authorization") bearerToken: String,
+        @retrofit2.http.Query("after") after: Int,
+        @retrofit2.http.Query("limit") limit: Int
+    ): Response<RestorePage<ExpenseSyncPayload>>
+
     @retrofit2.http.DELETE("expenses/sync/{localId}")
     suspend fun deleteExpense(
         @Header("Authorization") bearerToken: String,
