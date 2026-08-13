@@ -12,6 +12,7 @@ import com.spendwise.presentation.screens.HomeScreen
 import com.spendwise.presentation.screens.LoginScreen
 import com.spendwise.presentation.screens.NotificationsScreen
 import com.spendwise.presentation.screens.ProfileScreen
+import com.spendwise.presentation.screens.RecategoriseScreen
 import com.spendwise.presentation.screens.SplashScreen
 import com.spendwise.presentation.viewmodel.AuthViewModel
 
@@ -82,6 +83,9 @@ fun SpendWiseNavHost() {
                 onProfile = { navController.navigate(Routes.Profile.route) }
             )
         }
+        composable(Routes.Recategorise.route) {
+            RecategoriseScreen(onNavigateUp = { navController.popBackStack() })
+        }
         composable(Routes.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
@@ -89,6 +93,7 @@ fun SpendWiseNavHost() {
                 onTransactions = { navController.navigate(Routes.ExpenseList.route) },
                 onAddExpense = { navController.navigate(Routes.AddExpense.route) },
                 onAnalytics = { navController.navigate(Routes.Analytics.route) },
+                onFixCategories = { navController.navigate(Routes.Recategorise.route) },
                 onLogout = {
                     navController.navigate(Routes.Login.route) {
                         popUpTo(Routes.Home.route) { inclusive = true }

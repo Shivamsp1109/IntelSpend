@@ -80,7 +80,7 @@ class AddExpenseViewModel @Inject constructor(
 data class AddExpenseUiState(
     val title: String = "",
     val amount: String = "",
-    val category: ExpenseCategory = ExpenseCategory.Food,
+    val category: ExpenseCategory = ExpenseCategory.FoodDining,
     val date: Long = System.currentTimeMillis(),
     val merchant: String = "",
     val currency: Currency = Currency.INR,

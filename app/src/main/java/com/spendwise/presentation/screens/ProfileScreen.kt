@@ -1,6 +1,7 @@
 package com.spendwise.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ fun ProfileScreen(
     onTransactions: () -> Unit,
     onAddExpense: () -> Unit,
     onAnalytics: () -> Unit,
+    onFixCategories: () -> Unit = {},
     onLogout: () -> Unit,
     smartExtractionViewModel: SmartExtractionViewModel = hiltViewModel()
 ) {
@@ -135,7 +137,11 @@ fun ProfileScreen(
             )
             ProfileItem(Icons.Default.Person, "Personal Information")
             ProfileItem(Icons.Default.CreditCard, "Payment Methods")
-            ProfileItem(Icons.Default.Category, "Categories")
+            ProfileItem(
+                Icons.Default.Category,
+                "Fix Categories",
+                onClick = onFixCategories
+            )
             ProfileItem(Icons.Default.AccountBalanceWallet, "Budget")
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")
             ProfileItem(Icons.Default.Settings, "Settings")
@@ -194,7 +200,13 @@ private fun SmartExtractionCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text("Smart Extraction", color = Color(0xFF17102A))
                     Text(
-                        "Reads receipts and screenshots your phone can't. Sends the image to SpendWise's servers.",
+                        // Naming Google matters. "Sent to our servers" implies the
+                        // data stops there; the whole document is forwarded to a
+                        // third-party model, and that is the part someone deciding
+                        // whether to upload a bank statement needs to know.
+                        "Reads receipts and statements your phone can't. The full " +
+                            "image is uploaded and forwarded to Google's Gemini API " +
+                            "to be read.",
                         color = SpendWiseTextMuted,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -252,7 +264,8 @@ private fun NarrativeCard(enabled: Boolean, onToggle: (Boolean) -> Unit) {
                     Text("Written Summaries", color = Color(0xFF17102A))
                     Text(
                         "Describes a period in plain English on the Analysis screen. " +
-                            "Sends your totals and top merchant names — not individual transactions.",
+                            "Sends your totals and top merchant names to Google's " +
+                            "Gemini API — not individual transactions.",
                         color = SpendWiseTextMuted,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -279,8 +292,13 @@ private fun NarrativeCard(enabled: Boolean, onToggle: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun ProfileItem(icon: ImageVector, title: String) {
+private fun ProfileItem(
+    icon: ImageVector,
+    title: String,
+    onClick: (() -> Unit)? = null
+) {
     Card(
+        modifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(0.dp)
