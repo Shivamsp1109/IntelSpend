@@ -15,5 +15,9 @@ data class Income(
     /** Free-text note; required when source == MISCELLANEOUS. */
     val note: String? = null,
     val date: Long,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    /** Bank or UPI reference, when the source carried one. Used to spot re-imports. */
+    val reference: String? = null,
+    /** True when the date was substituted at import rather than read. */
+    val dateIsAssumed: Boolean = false
 )

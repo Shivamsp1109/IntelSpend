@@ -25,7 +25,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spendwise.data.ingestion.model.DuplicateConfidence
 import com.spendwise.data.ingestion.model.RawTransaction
+import com.spendwise.util.DateUtils
+import com.spendwise.util.PickerDates
+import java.time.LocalDate
+import java.time.ZoneId
 import com.spendwise.data.ingestion.model.TransactionType
 import com.spendwise.data.ingestion.model.ReviewSeverity
 import com.spendwise.presentation.components.CategoryBadge
@@ -168,6 +173,7 @@ fun ReviewContent(
 ) {
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
     var showCategoryPicker by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -244,18 +250,76 @@ fun ReviewContent(
                             val severity = tx.fieldConfidence.severity()
                             if (tx.isDuplicate) {
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Duplicate", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                                // The wording tracks the evidence. A reference
+                                // match is a fact and is stated as one; a match
+                                // on amount and date alone is a question, and
+                                // saying "Duplicate" there would overstate it
+                                // into something the user just accepts.
+                                val (label, colour) = when (tx.duplicateConfidence) {
+                                    DuplicateConfidence.CERTAIN ->
+                                        "Already imported" to MaterialTheme.colorScheme.error
+                                    DuplicateConfidence.LIKELY ->
+                                        "Duplicate" to MaterialTheme.colorScheme.error
+                                    else ->
+                                        "Possible duplicate" to Color(0xFFF2A104)
+                                }
+                                Text(
+                                    label,
+                                    color = colour,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
                             } else if (severity != ReviewSeverity.GREEN) {
                                 Spacer(modifier = Modifier.width(8.dp))
-                                val (badgeText, badgeColor) = when (severity) {
-                                    ReviewSeverity.RED -> "Uncertain Amount/Date" to Color.Red
-                                    ReviewSeverity.YELLOW -> "Please Review Fields" to Color(0xFFF2A104)
+                                val (badgeText, badgeColor) = when {
+                                    // Named specifically, because "uncertain"
+                                    // suggests a value that might be wrong,
+                                    // whereas this one was never on the page.
+                                    severity == ReviewSeverity.RED && tx.dateIsAssumed ->
+                                        "Date not found" to Color.Red
+                                    severity == ReviewSeverity.RED ->
+                                        "Uncertain Amount/Date" to Color.Red
+                                    severity == ReviewSeverity.YELLOW ->
+                                        "Please Review Fields" to Color(0xFFF2A104)
                                     else -> "" to Color.Transparent
                                 }
                                 if (badgeText.isNotEmpty()) {
                                     Text(badgeText, color = badgeColor, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                 }
                             }
+                        }
+                        // The date is shown so it can be checked, and is tappable
+                        // so it can be corrected. When it was assumed the wording
+                        // says so outright — the date on screen looks entirely
+                        // ordinary otherwise, and only the user knows what day
+                        // they actually paid.
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (tx.dateIsAssumed) {
+                                "No date found — set to ${DateUtils.formatDate(tx.date)}. Tap to change"
+                            } else {
+                                "${DateUtils.formatDate(tx.date)} · Tap to change"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (tx.dateIsAssumed) {
+                                Color(0xFFF2A104)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            modifier = Modifier.clickable {
+                                selectedIndex = index
+                                showDatePicker = true
+                            }
+                        )
+                        // Naming what it matched lets the user judge the flag
+                        // instead of taking it on trust.
+                        tx.duplicateOf?.let { matched ->
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                "Matches $matched",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                     Text(
@@ -290,6 +354,76 @@ fun ReviewContent(
                 onUpdateTransaction(idx, updatedTx)
             }
         )
+    }
+
+    selectedIndex?.takeIf { showDatePicker }?.let { index ->
+        TransactionDatePicker(
+            initialDate = transactions[index].date,
+            onDismiss = { showDatePicker = false },
+            onDateSelected = { picked ->
+                // A date the user chose is a date somebody read, so the assumed
+                // flag comes off with it. Leaving it set would keep this row
+                // matching duplicates without regard to its date — which is
+                // right for a guess and wrong once it has been corrected.
+                onUpdateTransaction(
+                    index,
+                    transactions[index].copy(date = picked, dateIsAssumed = false)
+                )
+                showDatePicker = false
+            }
+        )
+    }
+}
+
+/**
+ * Lets the user set the transaction's own date, which matters most when the
+ * document did not carry one: the row shows today's date, and only they know
+ * what day they actually paid.
+ *
+ * Future dates are refused. A transaction being imported has already happened,
+ * so a date after today is a mis-tap, and one accepted quietly would drop the
+ * expense outside the period the user is looking at.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransactionDatePicker(
+    initialDate: Long,
+    onDismiss: () -> Unit,
+    onDateSelected: (Long) -> Unit
+) {
+    val zone = remember { ZoneId.systemDefault() }
+    val todayLocal = remember { LocalDate.now(zone) }
+
+    val state = rememberDatePickerState(
+        // Material works in UTC throughout — see PickerDates for why this
+        // cannot be the stored timestamp.
+        initialSelectedDateMillis = PickerDates.toPickerValue(initialDate, zone),
+        selectableDates = object : SelectableDates {
+            // A transaction being imported has already happened, so a future
+            // date is a mis-tap — and one accepted quietly would drop the
+            // expense outside whatever period the user is looking at.
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                !PickerDates.pickedDate(utcTimeMillis).isAfter(todayLocal)
+
+            override fun isSelectableYear(year: Int) = year <= todayLocal.year
+        }
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    state.selectedDateMillis?.let { picked ->
+                        onDateSelected(PickerDates.fromPickerValue(picked, zone))
+                    }
+                },
+                enabled = state.selectedDateMillis != null
+            ) { Text("Set date") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    ) {
+        DatePicker(state = state)
     }
 }
 

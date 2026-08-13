@@ -7,8 +7,15 @@ import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.Income
 import com.spendwise.domain.model.IncomeSource
 
-// Indexed on date for the same reason as expenses — see ExpenseEntity.
-@Entity(tableName = "incomes", indices = [Index(value = ["date"])])
+// Indexed on date and reference for the same reasons as expenses — see ExpenseEntity.
+@Entity(
+    tableName = "incomes",
+    indices = [
+        Index(value = ["date"]),
+        Index(value = ["reference"]),
+        Index(value = ["dateIsAssumed"])
+    ]
+)
 data class IncomeEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
@@ -27,7 +34,11 @@ data class IncomeEntity(
      */
     val note: String? = null,
     val date: Long,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    /** Bank or UPI reference; see ExpenseEntity.reference. */
+    val reference: String? = null,
+    /** See ExpenseEntity.dateIsAssumed. */
+    val dateIsAssumed: Boolean = false
 )
 
 fun IncomeEntity.toDomain(): Income = Income(
@@ -38,7 +49,9 @@ fun IncomeEntity.toDomain(): Income = Income(
     source = IncomeSource.fromName(source),
     note = note,
     date = date,
-    isSynced = isSynced
+    isSynced = isSynced,
+    reference = reference,
+    dateIsAssumed = dateIsAssumed
 )
 
 fun Income.toEntity(): IncomeEntity = IncomeEntity(
@@ -49,5 +62,7 @@ fun Income.toEntity(): IncomeEntity = IncomeEntity(
     source = source.name,
     note = note,
     date = date,
-    isSynced = isSynced
+    isSynced = isSynced,
+    reference = reference,
+    dateIsAssumed = dateIsAssumed
 )

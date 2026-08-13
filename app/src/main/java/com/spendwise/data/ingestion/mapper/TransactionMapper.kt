@@ -23,7 +23,13 @@ class TransactionMapper @Inject constructor() {
                     date = raw.date,
                     merchant = raw.merchant,
                     currency = raw.currency,
-                    source = raw.source
+                    source = raw.source,
+                    // Carried through to storage, not just used during this
+                    // import: it is what lets a bank statement imported next
+                    // month recognise this payment as already recorded.
+                    reference = raw.reference,
+                    dateIsAssumed = raw.dateIsAssumed,
+                    nature = raw.nature
                 )
             )
         } else {
@@ -34,7 +40,9 @@ class TransactionMapper @Inject constructor() {
                     currency = raw.currency,
                     source = IncomeSource.MISCELLANEOUS,
                     note = raw.merchant,
-                    date = raw.date
+                    date = raw.date,
+                    reference = raw.reference,
+                    dateIsAssumed = raw.dateIsAssumed
                 )
             )
         }

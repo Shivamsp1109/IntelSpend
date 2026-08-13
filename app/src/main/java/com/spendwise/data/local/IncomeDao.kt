@@ -20,6 +20,14 @@ interface IncomeDao {
     @Query("SELECT * FROM incomes WHERE isSynced = 0 ORDER BY date ASC")
     suspend fun getPendingSync(): List<IncomeEntity>
 
+    /** Whether this device holds anything yet; gates restore-from-server. */
+    @Query("SELECT COUNT(*) FROM incomes")
+    suspend fun countIncomes(): Int
+
+    /** See ExpenseDao.getExpensesWithAssumedDate. */
+    @Query("SELECT * FROM incomes WHERE dateIsAssumed = 1")
+    suspend fun getIncomesWithAssumedDate(): List<IncomeEntity>
+
     @Query("SELECT * FROM income_delete_sync_queue ORDER BY createdAt ASC")
     suspend fun getPendingDeleteSync(): List<IncomeDeleteSyncEntity>
 

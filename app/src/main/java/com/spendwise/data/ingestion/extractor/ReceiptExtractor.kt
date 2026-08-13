@@ -7,6 +7,7 @@ import com.spendwise.data.ingestion.model.RawTransaction
 import com.spendwise.data.ingestion.model.TransactionType
 import com.spendwise.data.ingestion.normalizer.AmountNormalizer
 import com.spendwise.data.ingestion.normalizer.DateNormalizer
+import com.spendwise.data.ingestion.normalizer.ReferenceExtractor
 import com.spendwise.data.ingestion.ocr.OcrResult
 import com.spendwise.data.ingestion.scoring.CurrencyScorer
 import com.spendwise.data.ingestion.scoring.DateScorer
@@ -45,7 +46,8 @@ class ReceiptExtractor @Inject constructor() {
 
         val order = DateNormalizer.resolveOrder(lineTexts)
         val dateCandidates = DateScorer.scoreCandidates(lineTexts, order)
-        val dateMillis = dateCandidates.maxByOrNull { it.score }?.value ?: System.currentTimeMillis()
+        val readDate = dateCandidates.maxByOrNull { it.score }?.value
+        val dateMillis = readDate ?: System.currentTimeMillis()
         val dateConfidence = if (dateCandidates.isEmpty()) 0.3f else DateScorer.confidenceFrom(dateCandidates)
 
         val currencyCandidates = CurrencyScorer.scoreCandidates(ocrResult.fullText)
@@ -67,11 +69,13 @@ class ReceiptExtractor @Inject constructor() {
                 title = merchant,
                 amount = total.value,
                 date = dateMillis,
+                dateIsAssumed = readDate == null,
                 merchant = merchant,
                 currency = currency,
                 category = category,
                 type = TransactionType.DEBIT,
                 source = ExpenseSource.OCR,
+                reference = ReferenceExtractor.from(ocrResult.fullText),
                 confidence = (merchantConfidence + dateConfidence + total.confidence + currencyConfidence) / 4f,
                 fieldConfidence = fieldConfidence
             )
@@ -180,12 +184,23 @@ class ReceiptExtractor @Inject constructor() {
             """\b(bazaar|bazar|drug|pharmacy|medical|chemist|store|mart|supermarket|restaurant|hotel|cafe|counter|traders|enterprises|services)\b"""
         )
 
+        /**
+         * First match wins, so the more specific patterns come first: a fuel
+         * bill and a taxi fare are both travel-ish, and separating them is the
+         * point of having both categories.
+         */
         val CATEGORY_RULES: List<Pair<Regex, ExpenseCategory>> = listOf(
-            Regex("""\b(drug|drugs|pharmacy|pharmacist|chemist|hospital|clinic|doctor|medical|medicine|tablets?|capsules?|dosage)\b""") to ExpenseCategory.Health,
-            Regex("""\b(restaurant|cafe|caf|food|dining|diner|meal|kitchen|pizza|burger|bakery|sweets)\b""") to ExpenseCategory.Food,
-            Regex("""\b(fuel|petrol|diesel|uber|ola|rapido|taxi|cab|travel|airlines|irctc|railway|toll|parking)\b""") to ExpenseCategory.Travel,
-            Regex("""\b(electricity|water bill|broadband|mobile bill|recharge|postpaid|prepaid|gas bill|dth)\b""") to ExpenseCategory.Bills,
-            Regex("""\b(mall|mart|store|supermarket|shopping|retail|apparel|fashion|footwear)\b""") to ExpenseCategory.Shopping
+            Regex("""\b(drug|drugs|pharmacy|pharmacist|chemist|hospital|clinic|doctor|medical|medicine|tablets?|capsules?|dosage|diagnostic|pathology)\b""") to ExpenseCategory.HealthMedical,
+            Regex("""\b(petrol|diesel|fuel station|petrol pump|hpcl|bpcl|iocl)\b""") to ExpenseCategory.Fuel,
+            Regex("""\b(supermarket|grocery|groceries|kirana|provision|vegetables|fruits|dairy)\b""") to ExpenseCategory.Groceries,
+            Regex("""\b(restaurant|cafe|caf|food|dining|diner|meal|kitchen|pizza|burger|bakery|sweets|biryani|dhaba)\b""") to ExpenseCategory.FoodDining,
+            Regex("""\b(uber|ola|rapido|taxi|cab|auto fare|metro|bus fare|toll|parking)\b""") to ExpenseCategory.Transport,
+            Regex("""\b(travel|airlines|flight|irctc|railway|hotel|resort|booking)\b""") to ExpenseCategory.Travel,
+            Regex("""\b(broadband|mobile bill|recharge|postpaid|prepaid|data pack)\b""") to ExpenseCategory.MobileInternet,
+            Regex("""\b(electricity|water bill|gas bill|dth|utility)\b""") to ExpenseCategory.Utilities,
+            Regex("""\b(tuition|school fee|college|course|exam fee|coaching)\b""") to ExpenseCategory.Education,
+            Regex("""\b(salon|spa|barber|grooming|cosmetics)\b""") to ExpenseCategory.PersonalCare,
+            Regex("""\b(mall|mart|store|shopping|retail|apparel|fashion|footwear)\b""") to ExpenseCategory.Shopping
         )
     }
 }

@@ -2,7 +2,7 @@ package com.spendwise.data.ingestion
 
 import android.content.Context
 import android.net.Uri
-import com.spendwise.data.ingestion.category.CategoryPredictor
+import com.spendwise.data.ingestion.category.CategoryResolver
 import com.spendwise.data.ingestion.detector.FileType
 import com.spendwise.data.ingestion.detector.FileTypeDetector
 import com.spendwise.data.ingestion.duplicate.DuplicateChecker
@@ -64,7 +64,7 @@ class IngestionOrchestrator @Inject constructor(
     private val screenshotExtractor: ScreenshotExtractor,
     private val statementExtractor: StatementExtractor,
     private val csvExtractor: CsvExtractor,
-    private val categoryPredictor: CategoryPredictor,
+    private val categoryResolver: CategoryResolver,
     private val duplicateChecker: DuplicateChecker,
     private val extractionDataSource: ExtractionDataSource,
     private val llmTransactionMapper: LlmTransactionMapper,
@@ -116,11 +116,13 @@ class IngestionOrchestrator @Inject constructor(
             transactions
         }
 
-        val categorised = named.map { tx ->
-            val predicted = tx.merchant?.let { categoryPredictor.predict(it) } ?: tx.category
-            // Never let a prediction of Other overwrite a category the file stated outright.
-            tx.copy(category = if (predicted == ExpenseCategory.Other) tx.category else predicted)
-        }
+        // Resolves what it can on device, then asks the model once for whatever
+        // is left — deduplicated, so cost follows distinct merchants rather than
+        // transaction count. See CategoryResolver.
+        val categorised = categoryResolver.resolve(
+            transactions = named,
+            useModelForUnknown = smartExtractionPreferences.enabled.value
+        )
 
         duplicateChecker.flagDuplicates(categorised)
 

@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS expenses (
     merchant     VARCHAR(255) DEFAULT NULL,
     currency     VARCHAR(10) NOT NULL DEFAULT 'INR',
     source       VARCHAR(50) NOT NULL DEFAULT 'MANUAL',
+    -- Bank or UPI reference (RRN/UTR) when the imported document carried one.
+    -- Identifies the same payment across documents, so duplicate detection
+    -- survives a reinstall.
+    reference    VARCHAR(64) DEFAULT NULL,
+    -- 1 when the date was substituted at import because the document showed
+    -- none. Duplicate detection must not treat such a date as evidence.
+    date_is_assumed TINYINT(1) NOT NULL DEFAULT 0,
     updated_at   BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_expense (uid, local_id),
     INDEX idx_expenses_uid_date (uid, expense_date),
@@ -48,6 +55,10 @@ CREATE TABLE IF NOT EXISTS incomes (
     -- Free-text note; required when source = 'MISCELLANEOUS'
     note        TEXT DEFAULT NULL,
     income_date BIGINT NOT NULL,
+    -- See expenses.reference.
+    reference   VARCHAR(64) DEFAULT NULL,
+    -- See expenses.date_is_assumed.
+    date_is_assumed TINYINT(1) NOT NULL DEFAULT 0,
     updated_at  BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_income (uid, local_id),
     INDEX idx_incomes_uid_date (uid, income_date),
@@ -143,3 +154,16 @@ CREATE TABLE IF NOT EXISTS llm_usage (
 -- ALTER TABLE expenses ADD COLUMN merchant  VARCHAR(255) DEFAULT NULL;
 -- ALTER TABLE expenses ADD COLUMN currency  VARCHAR(10)  NOT NULL DEFAULT 'INR';
 -- ALTER TABLE expenses ADD COLUMN source    VARCHAR(50)  NOT NULL DEFAULT 'MANUAL';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Payment reference upgrade (run on any database created before this column)
+--
+-- The server refuses to start without these columns rather than failing on
+-- every sync request, so if you are reading this because startup told you to,
+-- run the two statements below and start it again.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ALTER TABLE expenses ADD COLUMN reference VARCHAR(64) DEFAULT NULL;
+-- ALTER TABLE incomes  ADD COLUMN reference VARCHAR(64) DEFAULT NULL;
+-- ALTER TABLE expenses ADD COLUMN date_is_assumed TINYINT(1) NOT NULL DEFAULT 0;
+-- ALTER TABLE incomes  ADD COLUMN date_is_assumed TINYINT(1) NOT NULL DEFAULT 0;

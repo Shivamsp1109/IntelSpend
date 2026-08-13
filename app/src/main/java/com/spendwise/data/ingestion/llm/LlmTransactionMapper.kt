@@ -6,6 +6,7 @@ import com.spendwise.data.ingestion.model.TransactionType
 import com.spendwise.data.ingestion.normalizer.AmountNormalizer
 import com.spendwise.data.ingestion.normalizer.CurrencyNormalizer
 import com.spendwise.data.ingestion.normalizer.DateNormalizer
+import com.spendwise.data.ingestion.normalizer.ReferenceExtractor
 import com.spendwise.data.remote.ExtractedTransaction
 import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.model.ExpenseSource
@@ -76,6 +77,7 @@ class LlmTransactionMapper @Inject constructor() {
             title = merchant?.take(40) ?: "Imported transaction",
             amount = amount,
             date = dateMillis ?: System.currentTimeMillis(),
+            dateIsAssumed = dateMillis == null,
             merchant = merchant,
             currency = CurrencyNormalizer.normalize(item.currency),
             category = ExpenseCategory.fromLabel(item.category),
@@ -85,6 +87,11 @@ class LlmTransactionMapper @Inject constructor() {
                 TransactionType.DEBIT
             },
             source = source,
+            // Validated rather than trusted: a model that hallucinates a
+            // plausible-looking reference would make two unrelated payments
+            // collapse into one, so it goes through the same shape checks as a
+            // reference read off the page.
+            reference = item.reference?.let { ReferenceExtractor.from("Ref $it") },
             confidence = amountConfidence,
             fieldConfidence = FieldConfidence(
                 title = merchantConfidence,

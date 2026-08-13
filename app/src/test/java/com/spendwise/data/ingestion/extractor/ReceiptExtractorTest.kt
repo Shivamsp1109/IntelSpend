@@ -36,7 +36,7 @@ class ReceiptExtractorTest {
         assertEquals("JANATHA BAZAAR DRUG COUNTER", transaction.merchant)
         assertEquals("JANATHA BAZAAR DRUG COUNTER", transaction.title)
         assertEquals(270.0, transaction.amount, 0.0)
-        assertEquals(ExpenseCategory.Health, transaction.category)
+        assertEquals(ExpenseCategory.HealthMedical, transaction.category)
         assertEquals(ExpenseSource.OCR, transaction.source)
         assertNotNull(transaction.date)
     }

@@ -11,6 +11,7 @@ import com.spendwise.data.ingestion.normalizer.CurrencyNormalizer
 import com.spendwise.data.ingestion.normalizer.DateNormalizer
 import com.spendwise.data.ingestion.normalizer.DayMonthOrder
 import com.spendwise.data.ingestion.normalizer.MerchantNormalizer
+import com.spendwise.data.ingestion.normalizer.ReferenceExtractor
 import com.spendwise.data.ingestion.ocr.OcrResult
 import com.spendwise.data.ingestion.ocr.OcrWord
 import com.spendwise.domain.model.Currency
@@ -427,6 +428,9 @@ class StatementExtractor @Inject constructor() {
             currency = currency,
             type = if (isCredit) TransactionType.CREDIT else TransactionType.DEBIT,
             source = ExpenseSource.PDF,
+            // Read from the raw narration rather than the tidied merchant: the
+            // reference is exactly the part normalisation strips out.
+            reference = ReferenceExtractor.from(entry.rowText),
             confidence = (amountConfidence + dateConfidence + merchantConfidence + directionConfidence) / 4f,
             fieldConfidence = FieldConfidence(
                 title = merchantConfidence,

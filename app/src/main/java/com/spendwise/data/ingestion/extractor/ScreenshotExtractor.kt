@@ -3,6 +3,7 @@ package com.spendwise.data.ingestion.extractor
 import com.spendwise.data.ingestion.model.RawTransaction
 import com.spendwise.data.ingestion.model.TransactionType
 import com.spendwise.data.ingestion.model.FieldConfidence
+import com.spendwise.data.ingestion.normalizer.ReferenceExtractor
 import com.spendwise.data.ingestion.ocr.OcrLine
 import com.spendwise.data.ingestion.ocr.OcrResult
 import com.spendwise.data.ingestion.scoring.AmountScorer
@@ -78,10 +79,15 @@ class ScreenshotExtractor @Inject constructor() {
                 title = title,
                 amount = bestAmount,
                 date = dateMillis ?: System.currentTimeMillis(),
+                dateIsAssumed = dateMillis == null,
                 merchant = merchant,
                 currency = currency,
                 type = TransactionType.DEBIT,
                 source = ExpenseSource.SCREENSHOT,
+                // Payment apps print the UPI reference on the confirmation
+                // screen. Capturing it here is what lets the bank statement,
+                // imported weeks later, recognise this as the same payment.
+                reference = ReferenceExtractor.from(ocrResult.fullText),
                 confidence = overallConfidence,
                 fieldConfidence = fieldConfidence
             )

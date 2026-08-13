@@ -23,8 +23,16 @@ object MerchantNormalizer {
     }
 
     fun normalize(raw: String): String {
-        var clean = raw.trim()
-        
+        // A payment collected by an aggregator names the aggregator first and
+        // the shop second, so "PAYTM*SWIGGY" would otherwise display as Paytm —
+        // which is true of half the user's transactions and identifies none of
+        // them.
+        var clean = MerchantNoise.stripProcessorPrefix(raw.trim())
+
+        // Transaction-type words that survived positional parsing, e.g. a
+        // narration ending "... WDL TFR" rather than beginning with it.
+        clean = MerchantNoise.trimStructuralEdges(clean)
+
         // Remove common suffixes
         val suffixes = listOf(
             " PVT LTD", " PVT. LTD.", " PRIVATE LIMITED", " LTD", " LIMITED", 

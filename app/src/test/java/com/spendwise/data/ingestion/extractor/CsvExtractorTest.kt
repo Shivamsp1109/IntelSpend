@@ -23,7 +23,7 @@ class CsvExtractorTest {
         assertEquals("Zomato", result[0].merchant)
         assertEquals(345.67, result[0].amount, 0.0)
         assertEquals(TransactionType.DEBIT, result[0].type)
-        assertEquals(ExpenseCategory.Food, result[0].category)
+        assertEquals(ExpenseCategory.FoodDining, result[0].category)
         assertEquals(ExpenseSource.CSV, result[0].source)
 
         assertEquals("Salary Acme", result[1].merchant)
