@@ -22,6 +22,13 @@ import kotlinx.coroutines.flow.Flow
  * seconds), with 'localtime' so buckets line up with the user's calendar rather
  * than UTC. Without it, an evening transaction lands in the following day for
  * anyone east of Greenwich.
+ *
+ * Every expense aggregate also filters `nature = 'Spending'`. A statement import
+ * picks up transfers between the user's own accounts, credit-card bill payments,
+ * EMI and ATM withdrawals as debits alongside real purchases. Counted, a single
+ * transfer between two of someone's own accounts makes the month look ruinous
+ * and every chart on the screen lies at once. Duplicate detection deliberately
+ * does *not* filter this way — a repeated transfer is still a repeat.
  */
 @Dao
 interface AnalyticsDao {
@@ -32,6 +39,7 @@ interface AnalyticsDao {
         """
         SELECT COALESCE(SUM(amount), 0) FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         """
     )
     suspend fun totalExpense(start: Long, end: Long, currency: String): Double
@@ -48,6 +56,7 @@ interface AnalyticsDao {
         """
         SELECT COUNT(*) FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         """
     )
     suspend fun expenseCount(start: Long, end: Long, currency: String): Int
@@ -60,6 +69,7 @@ interface AnalyticsDao {
                SUM(amount) AS total
         FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         GROUP BY bucket
         ORDER BY bucket ASC
         """
@@ -72,6 +82,7 @@ interface AnalyticsDao {
                SUM(amount) AS total
         FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         GROUP BY bucket
         ORDER BY bucket ASC
         """
@@ -109,6 +120,7 @@ interface AnalyticsDao {
                SUM(amount) AS total
         FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         GROUP BY bucket
         ORDER BY bucket ASC
         """
@@ -122,6 +134,7 @@ interface AnalyticsDao {
         SELECT category AS label, SUM(amount) AS total, COUNT(*) AS count
         FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         GROUP BY category
         ORDER BY total DESC
         """
@@ -137,6 +150,7 @@ interface AnalyticsDao {
         SELECT merchant AS label, SUM(amount) AS total, COUNT(*) AS count
         FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
           AND merchant IS NOT NULL AND merchant != ''
         GROUP BY merchant
         ORDER BY total DESC
@@ -155,6 +169,7 @@ interface AnalyticsDao {
         SELECT id, title, amount, category, date, merchant
         FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         ORDER BY amount DESC
         LIMIT :limit
         """
@@ -176,6 +191,7 @@ interface AnalyticsDao {
         """
         SELECT * FROM expenses
         WHERE date BETWEEN :start AND :end AND currency = :currency
+          AND nature = 'Spending'
         ORDER BY date DESC
         """
     )
@@ -191,6 +207,7 @@ interface AnalyticsDao {
         """
         SELECT currency AS label, SUM(amount) AS total, COUNT(*) AS count
         FROM expenses
+        WHERE nature = 'Spending'
         GROUP BY currency
         ORDER BY count DESC
         """

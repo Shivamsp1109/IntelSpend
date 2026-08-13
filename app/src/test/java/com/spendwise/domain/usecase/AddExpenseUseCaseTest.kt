@@ -22,7 +22,7 @@ class AddExpenseUseCaseTest {
         val expense = Expense(
             title = "Lunch",
             amount = 250.0,
-            category = ExpenseCategory.Food,
+            category = ExpenseCategory.FoodDining,
             date = 1_700_000_000_000
         )
 

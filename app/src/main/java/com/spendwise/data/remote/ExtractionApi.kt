@@ -41,6 +41,18 @@ interface ExtractionApi {
         @Body request: NarrativeRequest
     ): Response<NarrativeResponse>
 
+    /**
+     * Classifies merchants the device could not place itself.
+     *
+     * One request covers every unresolved merchant in an import, deduplicated,
+     * so cost scales with distinct merchants rather than transactions.
+     */
+    @POST("extract/categorise")
+    suspend fun categorise(
+        @Header("Authorization") bearerToken: String,
+        @Body request: CategoriseRequest
+    ): Response<CategoriseResponse>
+
     @GET("extract/usage")
     suspend fun usage(
         @Header("Authorization") bearerToken: String
@@ -72,7 +84,9 @@ data class ExtractedTransaction(
     @SerializedName("category") val category: String = "Other",
     @SerializedName("confidence") val confidence: Double = 0.0,
     /** Verbatim text the amount was read from — checked against OCR before we trust it. */
-    @SerializedName("amountSource") val amountSource: String = ""
+    @SerializedName("amountSource") val amountSource: String = "",
+    /** UPI/UTR/RRN reference as printed, or null when the document showed none. */
+    @SerializedName("reference") val reference: String? = null
 )
 
 data class MerchantEnrichRequest(
@@ -123,6 +137,32 @@ data class NarrativeResponse(
     @SerializedName("suggestions") val suggestions: List<String> = emptyList(),
     @SerializedName("callsUsedThisMonth") val callsUsedThisMonth: Int = 0,
     @SerializedName("monthlyCallCap") val monthlyCallCap: Int = 0
+)
+
+data class CategoriseRequest(
+    @SerializedName("items") val items: List<CategoriseItem>
+)
+
+/**
+ * Narration and amount travel with the name because the name alone is often
+ * ambiguous: IRCTC is Travel for a ticket and Transport for a platform fee.
+ */
+data class CategoriseItem(
+    @SerializedName("merchant") val merchant: String,
+    @SerializedName("narration") val narration: String? = null,
+    @SerializedName("amount") val amount: Double? = null
+)
+
+data class CategoriseResponse(
+    @SerializedName("results") val results: List<CategoriseResult> = emptyList()
+)
+
+data class CategoriseResult(
+    /** Position in the request list — the model echoes it back to pair them up. */
+    @SerializedName("index") val index: Int = -1,
+    @SerializedName("category") val category: String = "Other",
+    @SerializedName("nature") val nature: String = "Spending",
+    @SerializedName("confidence") val confidence: Double = 0.0
 )
 
 data class ExtractionUsage(

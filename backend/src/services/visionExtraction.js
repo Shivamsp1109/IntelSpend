@@ -32,10 +32,9 @@ const MAX_OUTPUT_TOKENS = 8192;
 
 const SUPPORTED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 
-const CATEGORIES = [
-  'Food', 'Travel', 'Shopping', 'Bills', 'Health',
-  'Entertainment', 'Education', 'Groceries', 'Other'
-];
+// Shared with the categorisation endpoint and mirrored by the Android enum —
+// see services/taxonomy.js for why these must not drift.
+const { CATEGORIES, NATURES } = require('./taxonomy');
 
 /**
  * Response schema. Gemini constrains generation to this shape, so the output is
@@ -93,15 +92,21 @@ const RESPONSE_SCHEMA = {
             type: Type.STRING,
             description:
               'The exact text you read the amount from, copied verbatim from the image. Used to verify the amount against OCR.'
+          },
+          reference: {
+            type: Type.STRING,
+            nullable: true,
+            description:
+              'The payment reference exactly as printed - UPI transaction ID, UTR, RRN, or bank reference number. Null if the image does not show one. Copy the characters exactly; do not reformat, pad or guess.'
           }
         },
         required: [
           'amount', 'currency', 'date', 'merchant',
-          'direction', 'category', 'confidence', 'amountSource'
+          'direction', 'category', 'confidence', 'amountSource', 'reference'
         ],
         propertyOrdering: [
           'amount', 'currency', 'date', 'merchant',
-          'direction', 'category', 'confidence', 'amountSource'
+          'direction', 'category', 'confidence', 'amountSource', 'reference'
         ]
       }
     }
@@ -129,6 +134,11 @@ Dates:
 - Return null rather than guessing a date the document does not show.
 
 Statements: return every transaction row, in the order they appear.
+
+The reference number:
+- Payment confirmations label it "UPI transaction ID", "UTR", "RRN", "Transaction ID" or "Reference number". Statements embed it in the narration, e.g. UPI/DR/621427195933/PAYEE - there the reference is 621427195933.
+- Copy it exactly as shown. It is used to recognise the same payment when it turns up again in a bank statement, so a mistyped digit is worse than no answer: return null rather than a value you are unsure of.
+- Do not confuse it with an account number, a card number, or the amount.
 
 Set confidence below 0.7 on any transaction where you are unsure — those get shown to the user for review rather than imported silently.`;
 

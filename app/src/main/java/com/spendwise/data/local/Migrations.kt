@@ -168,3 +168,96 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_incomes_date` ON `incomes` (`date`)")
     }
 }
+
+/**
+ * Room migration from schema version 6 → 7.
+ *
+ * Adds a nullable `reference` column to both transaction tables, holding the
+ * bank or UPI reference (RRN/UTR) when the imported document showed one, and
+ * indexes it.
+ *
+ * This is what makes cross-document duplicate detection possible: a UPI
+ * screenshot and the bank statement that lists the same payment weeks later
+ * agree on almost nothing — the merchant name is written differently and the
+ * timestamps differ — except this number. Every import checks it, so it is
+ * indexed rather than scanned.
+ *
+ * Existing rows get NULL, which simply means the reference was never captured;
+ * matching falls back to amount, date and merchant for those.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `expenses` ADD COLUMN `reference` TEXT")
+        db.execSQL("ALTER TABLE `incomes` ADD COLUMN `reference` TEXT")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_reference` ON `expenses` (`reference`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_incomes_reference` ON `incomes` (`reference`)")
+    }
+}
+
+/**
+ * Room migration from schema version 7 → 8.
+ *
+ * Records whether a transaction's date was read off the document or substituted
+ * because none could be found.
+ *
+ * The distinction cannot be recovered after the fact — an assumed date looks
+ * exactly like a real one — and duplicate detection needs it: a date that was
+ * guessed must not be allowed to rule out a match, or a receipt scanned a week
+ * late never lines up with the statement that later lists the same payment.
+ *
+ * Indexed because matching queries for exactly these rows, and they are rare,
+ * which is when an index on a boolean is worth having rather than wasteful.
+ *
+ * Existing rows get 0: dates already stored were either read from a document or
+ * typed by the user, and both are real.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `expenses` ADD COLUMN `dateIsAssumed` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `incomes` ADD COLUMN `dateIsAssumed` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_dateIsAssumed` ON `expenses` (`dateIsAssumed`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_incomes_dateIsAssumed` ON `incomes` (`dateIsAssumed`)")
+    }
+}
+
+/**
+ * Room migration from schema version 8 → 9.
+ *
+ * Records whether a debit was money spent or money moved, and rewrites the
+ * category labels the app used to store.
+ *
+ * **Nature.** Transfers between the user's own accounts, credit-card bill
+ * payments, EMI, investments and ATM withdrawals all appear on a statement as
+ * debits. Counted as spending, one transfer makes a month look ruinous. Existing
+ * rows default to Spending, which is what they were assumed to be — the column
+ * cannot be inferred retrospectively, and guessing at it would silently rewrite
+ * history the user has already seen.
+ *
+ * **Categories.** The category column holds the display label, and the labels
+ * changed: "Food" became "Food & Dining", "Health" became "Health & Medical".
+ * Left alone, every existing row would match no category and read as Other — a
+ * user's whole history reclassified by an upgrade. "Bills" is the imprecise one;
+ * it covered utilities, phone and subscriptions together, and Utilities is the
+ * least wrong of those.
+ *
+ * Kotlin resolves these labels too (see ExpenseCategory.LEGACY_LABELS), so the
+ * rewrite is belt and braces — but it keeps the stored data honest rather than
+ * relying on every future reader to know the history.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `expenses` ADD COLUMN `nature` TEXT NOT NULL DEFAULT 'Spending'"
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_expenses_nature` ON `expenses` (`nature`)")
+
+        val renames = listOf(
+            "Food" to "Food & Dining",
+            "Health" to "Health & Medical",
+            "Bills" to "Utilities"
+        )
+        for ((old, new) in renames) {
+            db.execSQL("UPDATE `expenses` SET `category` = ? WHERE `category` = ?", arrayOf(new, old))
+        }
+    }
+}

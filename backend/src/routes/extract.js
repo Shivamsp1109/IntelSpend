@@ -8,6 +8,8 @@ const {
   SUPPORTED_MEDIA_TYPES
 } = require('../services/visionExtraction');
 const { sanitiseFigures } = require('../services/narrativeFigures');
+const { categorise, MAX_ITEMS: MAX_CATEGORY_ITEMS } = require('../services/categorisation');
+const { modelLimiter, syncLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -37,7 +39,7 @@ const COST_PER_MTOK = {
 const DEFAULT_INPUT_COST_PER_MTOK = Number(process.env.EXTRACT_INPUT_COST_PER_MTOK || 0.25);
 const DEFAULT_OUTPUT_COST_PER_MTOK = Number(process.env.EXTRACT_OUTPUT_COST_PER_MTOK || 1.50);
 
-router.post('/', requireFirebaseAuth, async (req, res, next) => {
+router.post('/', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
   try {
     const { imageBase64, mediaType, hint } = req.body || {};
 
@@ -89,7 +91,7 @@ router.post('/', requireFirebaseAuth, async (req, res, next) => {
  * a whole statement regardless of page count, and costs a fraction of a single
  * image call. Amounts and dates stay deterministic — only the name is modelled.
  */
-router.post('/merchants', requireFirebaseAuth, async (req, res, next) => {
+router.post('/merchants', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
   try {
     const names = req.body?.names;
     if (!Array.isArray(names) || names.length === 0) {
@@ -121,6 +123,54 @@ router.post('/merchants', requireFirebaseAuth, async (req, res, next) => {
 });
 
 /**
+ * Classifies merchants the device could not place on its own.
+ *
+ * The client sends only what it could not resolve from the user's own
+ * corrections or the bundled merchant map, deduplicated by merchant — so a
+ * month of daily coffees is one entry here, not thirty. That is what keeps this
+ * costing rupees rather than being the expensive part of an import.
+ */
+router.post('/categorise', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
+  try {
+    const items = req.body?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      throw createBadRequest('Missing items array.');
+    }
+    if (items.length > MAX_CATEGORY_ITEMS) {
+      throw createBadRequest(`At most ${MAX_CATEGORY_ITEMS} items per request.`);
+    }
+
+    const cleaned = items.map((item, index) => {
+      const merchant = typeof item?.merchant === 'string' ? item.merchant.trim() : '';
+      if (!merchant) throw createBadRequest(`Item ${index} is missing a merchant.`);
+      return {
+        merchant: merchant.slice(0, 120),
+        // Bounded because it comes out of a parsed statement, which is to say
+        // out of a document we did not write.
+        narration: typeof item?.narration === 'string' ? item.narration.trim().slice(0, 200) : '',
+        amount: Number.isFinite(Number(item?.amount)) ? Math.abs(Number(item.amount)) : undefined
+      };
+    });
+
+    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    if (usedThisMonth >= MONTHLY_CALL_CAP) {
+      const error = new Error(
+        `Monthly limit of ${MONTHLY_CALL_CAP} model calls reached. It resets at the start of next month.`
+      );
+      error.status = 429;
+      throw error;
+    }
+
+    const result = await categorise(cleaned);
+    await recordUsage(req.user.uid, result);
+
+    return res.json({ results: result.results, model: result.model });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
  * Writes a plain-English summary of a period from figures the app has already
  * calculated.
  *
@@ -131,7 +181,7 @@ router.post('/merchants', requireFirebaseAuth, async (req, res, next) => {
  * into a prompt; capping it and pinning the response schema keeps a merchant
  * called "ignore previous instructions" from being able to do anything with it.
  */
-router.post('/narrative', requireFirebaseAuth, async (req, res, next) => {
+router.post('/narrative', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
   try {
     const figures = sanitiseFigures(req.body);
 
@@ -161,7 +211,7 @@ router.post('/narrative', requireFirebaseAuth, async (req, res, next) => {
 });
 
 /** Current spend and remaining quota, so the app can show it in settings. */
-router.get('/usage', requireFirebaseAuth, async (req, res, next) => {
+router.get('/usage', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
   try {
     const [rows] = await pool.execute(
       `SELECT COUNT(*)                AS calls,

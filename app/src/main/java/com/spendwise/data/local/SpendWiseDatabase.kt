@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         IncomeDeleteSyncEntity::class,
         LearnedCategoryEntity::class
     ],
-    version = 6,
+    version = 9,
     exportSchema = true
 )
 abstract class SpendWiseDatabase : RoomDatabase() {
