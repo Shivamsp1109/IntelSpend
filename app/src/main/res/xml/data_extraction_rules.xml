@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Android 12+ replacement for backup_rules.xml, which splits the policy in two.
+
+    `cloud-backup` is the Google Drive path and mirrors the older rules exactly.
+
+    `device-transfer` is a direct phone-to-phone copy during setup. The financial
+    data is excluded there too, and for the same reason rather than a different
+    one: the database key lives in the source device's hardware keystore and
+    cannot be transferred, so a copied database would arrive unreadable.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="database" path="spendwise.db" />
+        <exclude domain="database" path="spendwise.db-shm" />
+        <exclude domain="database" path="spendwise.db-wal" />
+        <exclude domain="sharedpref" path="spendwise_secure_prefs.xml" />
+        <exclude domain="file" path="reports" />
+    </cloud-backup>
+
+    <device-transfer>
+        <exclude domain="database" path="spendwise.db" />
+        <exclude domain="database" path="spendwise.db-shm" />
+        <exclude domain="database" path="spendwise.db-wal" />
+        <exclude domain="sharedpref" path="spendwise_secure_prefs.xml" />
+        <exclude domain="file" path="reports" />
+    </device-transfer>
+</data-extraction-rules>

@@ -2,8 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-const { assertDatabaseConnection } = require('./config/db');
+const { publicLimiter } = require('./middleware/rateLimit');
+const { assertDatabaseConnection, assertSchemaIsCurrent } = require('./config/db');
 const usersRouter = require('./routes/users');
 const expensesRouter = require('./routes/expenses');
 const incomesRouter = require('./routes/incomes');
@@ -22,13 +22,20 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Behind a reverse proxy or load balancer, req.ip is the proxy's address unless
+// Express is told how many hops to look back through. Getting this wrong makes
+// the IP limiter either useless (everyone shares the proxy's address) or
+// spoofable (any client can claim any address via X-Forwarded-For), so it is
+// explicit rather than guessed. Set TRUST_PROXY=1 when deploying behind one.
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY));
+}
+
 app.use(cors({ origin: allowedOrigins.length > 0 ? allowedOrigins : false }));
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false
-}));
+
+// Coarse, pre-auth. The real per-user limits live on the routers, where the
+// caller's identity is known — see middleware/rateLimit.js.
+app.use(publicLimiter);
 // Sync payloads are small; only the extraction route carries images, so it gets
 // its own larger ceiling rather than raising the limit for every endpoint.
 app.use('/extract', express.json({ limit: '8mb' }));
@@ -61,6 +68,7 @@ app.use((error, req, res, next) => {
 
 async function start() {
   await assertDatabaseConnection();
+  await assertSchemaIsCurrent();
   app.listen(port, () => {
     console.log(`SpendWise backend running on port ${port}`);
   });

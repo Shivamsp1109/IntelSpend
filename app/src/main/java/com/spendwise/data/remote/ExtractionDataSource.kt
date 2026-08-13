@@ -7,7 +7,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
+import javax.net.ssl.SSLException
 import kotlin.math.roundToInt
 
 sealed class ExtractionResult {
@@ -55,8 +59,29 @@ class ExtractionDataSource @Inject constructor(
                     ExtractionResult.Failed("Smart extraction failed (${response.code()}).")
             }
         } catch (e: Exception) {
-            ExtractionResult.Failed("Smart extraction is unreachable: ${e.message}")
+            ExtractionResult.Failed(describeFailure(e))
         }
+    }
+
+    /**
+     * Names the actual condition instead of calling everything "unreachable".
+     *
+     * A read timeout, a refused connection and an unresolvable host need three
+     * different fixes — wait longer, start the server, check the address — and
+     * reporting them identically sends you looking in the wrong place. This
+     * cost real debugging time when every extraction was timing out and the
+     * message suggested the server was down.
+     */
+    private fun describeFailure(error: Exception): String = when (error) {
+        is SocketTimeoutException ->
+            "Smart extraction timed out. The server may still be working — try again."
+        is ConnectException ->
+            "Could not reach the server. Check it is running and the address is right."
+        is UnknownHostException ->
+            "Could not find the server. Check the address and your connection."
+        is SSLException ->
+            "The secure connection to the server failed."
+        else -> "Smart extraction failed: ${error.message ?: error.javaClass.simpleName}"
     }
 
     /**
@@ -109,8 +134,36 @@ class ExtractionDataSource @Inject constructor(
                     else -> NarrativeResult.Failed("Could not write a summary (${response.code()}).")
                 }
             } catch (e: Exception) {
-                NarrativeResult.Failed("Summaries are unreachable: ${e.message}")
+                NarrativeResult.Failed(describeFailure(e))
             }
+        }
+
+    /**
+     * Classifies unresolved merchants, keyed back to the merchant sent.
+     *
+     * Returns an empty map on any failure rather than reporting it. A category
+     * is a convenience the user can correct in the review list; failing an
+     * otherwise-good import because the classifier was unreachable would trade
+     * a small problem for a large one.
+     */
+    suspend fun categorise(items: List<CategoriseItem>): Map<String, CategoriseResult> =
+        withContext(Dispatchers.IO) {
+            if (items.isEmpty()) return@withContext emptyMap()
+            val user = firebaseAuth.currentUser ?: return@withContext emptyMap()
+            val token = runCatching { user.getIdToken(false).await() }.getOrNull()?.token
+                ?: return@withContext emptyMap()
+
+            val response = runCatching {
+                api.categorise("Bearer $token", CategoriseRequest(items))
+            }.getOrNull() ?: return@withContext emptyMap()
+
+            if (!response.isSuccessful) return@withContext emptyMap()
+
+            response.body()?.results.orEmpty()
+                .mapNotNull { result ->
+                    items.getOrNull(result.index)?.let { sent -> sent.merchant to result }
+                }
+                .toMap()
         }
 
     suspend fun usage(): ExtractionUsage? = withContext(Dispatchers.IO) {

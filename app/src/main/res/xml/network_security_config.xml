@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Release networking policy: TLS only, no exceptions.
+
+    This app carries bank statements, UPI screenshots and full transaction
+    histories. Over plain HTTP every one of those, and the Firebase bearer token
+    authorising them, is readable by anything sharing the network. Denying
+    cleartext here means a misconfigured base URL fails loudly at request time
+    instead of shipping a silent leak.
+
+    The debug variant overrides this file to allow the local development server
+    (see src/debug/res/xml/network_security_config.xml). That override cannot
+    reach a release build, because resource overlays are per build type.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

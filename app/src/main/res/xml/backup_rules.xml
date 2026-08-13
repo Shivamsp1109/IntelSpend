@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Auto Backup rules (Android 11 and below).
+
+    Backup stays on so a user replacing their phone keeps their history, but the
+    financial data itself is excluded. Two reasons:
+
+    - The database is encrypted with a key held in this device's hardware
+      keystore, which by design cannot leave the device. A restored copy on new
+      hardware would be undecryptable anyway — backing it up would produce a
+      silent, useless restore rather than a working one.
+
+    - Backups land in the user's Google Drive. Even though that is their own
+      account, a full transaction history and any cached statement pages are not
+      something to copy off-device as a side effect of a default setting.
+
+    What remains eligible is ordinary app preferences, which carry no financial
+    data. Anything holding keys or documents is listed out explicitly below.
+-->
+<full-backup-content>
+    <exclude domain="database" path="spendwise.db" />
+    <exclude domain="database" path="spendwise.db-shm" />
+    <exclude domain="database" path="spendwise.db-wal" />
+
+    <!-- Keystore-wrapped database passphrase; worthless off-device, and not to be copied. -->
+    <exclude domain="sharedpref" path="spendwise_secure_prefs.xml" />
+
+    <!-- Saved reports and any decrypted working copies. -->
+    <exclude domain="file" path="reports" />
+    <exclude domain="cache" />
+</full-backup-content>

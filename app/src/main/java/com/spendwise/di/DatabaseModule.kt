@@ -10,10 +10,16 @@ import com.spendwise.data.local.MIGRATION_2_3
 import com.spendwise.data.local.MIGRATION_3_4
 import com.spendwise.data.local.MIGRATION_4_5
 import com.spendwise.data.local.MIGRATION_5_6
+import com.spendwise.data.local.MIGRATION_6_7
+import com.spendwise.data.local.MIGRATION_7_8
+import com.spendwise.data.local.MIGRATION_8_9
 import com.spendwise.data.local.RecurringEntryDao
 import com.spendwise.data.local.AnalyticsDao
+import com.spendwise.data.local.DatabaseEncryption
 import com.spendwise.data.local.LearnedCategoryDao
 import com.spendwise.data.local.SpendWiseDatabase
+import com.spendwise.util.crypto.DatabasePassphrase
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,12 +31,53 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    /**
+     * The database, encrypted at rest with SQLCipher.
+     *
+     * Room drives SQLCipher through the same SupportSQLite interfaces it uses
+     * for the platform database, so every DAO, query and migration is unchanged
+     * — the only difference is what the bytes on disk look like to anyone who
+     * gets hold of them.
+     */
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): SpendWiseDatabase =
-        Room.databaseBuilder(context, SpendWiseDatabase::class.java, "spendwise.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+        databasePassphrase: DatabasePassphrase
+    ): SpendWiseDatabase {
+        System.loadLibrary("sqlcipher")
+
+        val databaseFile = context.getDatabasePath(DATABASE_NAME)
+
+        // Resolved first, because it reports whether the previous key survived.
+        val passphrase = databasePassphrase.asText()
+
+        if (databasePassphrase.previousKeyLost && !DatabaseEncryption.isPlaintext(databaseFile)) {
+            // The file on disk was encrypted under a key this device no longer
+            // has. Opening it will never succeed again, so it is moved out of
+            // the way and a fresh database is built — otherwise every launch
+            // would fail identically, forever.
+            DatabaseEncryption.setAside(databaseFile)
+        }
+
+        // Existing installs have a readable database sitting there already. It
+        // has to be converted before Room tries to open it with a key.
+        if (DatabaseEncryption.isPlaintext(databaseFile)) {
+            DatabaseEncryption.encryptInPlace(databaseFile, passphrase)
+        }
+
+        // asBytes() hands over a fresh copy each time — SQLCipher zeroes the
+        // array it is given, so a shared one would arrive blank.
+        return Room.databaseBuilder(context, SpendWiseDatabase::class.java, DATABASE_NAME)
+            .openHelperFactory(SupportOpenHelperFactory(databasePassphrase.asBytes()))
+            .addMigrations(
+                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9
+            )
             .build()
+    }
+
+    private const val DATABASE_NAME = "spendwise.db"
 
     @Provides
     fun provideExpenseDao(database: SpendWiseDatabase): ExpenseDao = database.expenseDao()

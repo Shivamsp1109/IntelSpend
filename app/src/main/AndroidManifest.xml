@@ -6,23 +6,22 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.CAMERA" />
     <!--
-        Only for saving reports into Downloads on Android 9 and below. From
-        Android 10 the MediaStore handles that with no permission, so this is
-        capped rather than requested on every device.
+        No storage permission: reports are written to app-private storage and
+        shared through FileProvider, so nothing this app writes needs access to
+        shared storage at all.
     -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
         android:name=".SpendWiseApp"
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="SpendWise"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:theme="@style/Theme.SpendWise">
         <activity
             android:name=".MainActivity"
