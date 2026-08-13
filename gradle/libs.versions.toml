@@ -28,6 +28,8 @@ okhttp = "4.12.0"
 mlkit-text = "16.0.1"
 opencsv = "5.9"
 pdfbox = "2.0.27.0"
+sqlcipher = "4.6.1"
+sqliteAndroid = "2.4.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -76,10 +78,13 @@ coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
 firebase-storage = { module = "com.google.firebase:firebase-storage-ktx" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkit-text" }
 opencsv = { module = "com.opencsv:opencsv", version.ref = "opencsv" }
 pdfbox-android = { module = "com.tom-roush:pdfbox-android", version.ref = "pdfbox" }
+sqlcipher-android = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher" }
+androidx-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqliteAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

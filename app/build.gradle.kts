@@ -11,6 +11,49 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.firebase.crashlytics")
 }
 
+/**
+ * API endpoints, per build type.
+ *
+ * Set `spendwise.api.debug` / `spendwise.api.release` in gradle.properties (or
+ * pass `-Pspendwise.api.release=...`) rather than editing this file, so a
+ * developer's LAN address never lands in version control or in a release.
+ *
+ * The release URL is checked for TLS at configuration time. A release build is
+ * also covered at runtime by the network security config, which forbids
+ * cleartext outright — this check just turns a typo into a build failure rather
+ * than a request that dies on the user's phone.
+ */
+val debugApiBaseUrl: String =
+    (findProperty("spendwise.api.debug") as String?) ?: "http://192.168.1.19:3000/"
+
+val releaseApiBaseUrl: String =
+    (findProperty("spendwise.api.release") as String?) ?: "https://api.spendwise.invalid/"
+
+require(releaseApiBaseUrl.startsWith("https://")) {
+    "spendwise.api.release must be an https:// URL, but was '$releaseApiBaseUrl'. " +
+        "Release builds refuse cleartext traffic, so an http:// endpoint cannot work."
+}
+
+/**
+ * Certificate pins for the API host, as `sha256/<base64>` values.
+ *
+ * Set `spendwise.api.pins` to a comma-separated list. Empty means no pinning,
+ * which is the right default here: a pin that does not match the server's real
+ * certificate chain does not degrade the connection, it refuses it, and an app
+ * that cannot reach its backend is bricked until the next release.
+ *
+ * Supply at least two — the pin currently serving traffic, and a backup for the
+ * key you will rotate to. With a single pin, the day the certificate is renewed
+ * is the day every installed copy of the app stops working.
+ */
+val apiCertificatePins: String =
+    (findProperty("spendwise.api.pins") as String?)?.trim().orEmpty()
+
+require(apiCertificatePins.isEmpty() || apiCertificatePins.split(",").size >= 2) {
+    "spendwise.api.pins needs at least two pins (current plus a rotation backup), " +
+        "or none at all. A lone pin turns certificate renewal into an outage."
+}
+
 android {
     namespace = "com.spendwise"
     compileSdk = 35
@@ -21,13 +64,20 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        buildConfigField("String", "MYSQL_API_BASE_URL", "\"http://192.168.1.19:3000/\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "MYSQL_API_BASE_URL", "\"$debugApiBaseUrl\"")
+            // Never pinned in debug: a local server uses a self-signed
+            // certificate, and pinning would simply block development.
+            buildConfigField("String", "API_CERTIFICATE_PINS", "\"\"")
+        }
         release {
+            buildConfigField("String", "MYSQL_API_BASE_URL", "\"$releaseApiBaseUrl\"")
+            buildConfigField("String", "API_CERTIFICATE_PINS", "\"$apiCertificatePins\"")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -70,6 +120,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+    // Declared directly rather than leant on transitively: CertificatePinner and
+    // HttpUrl are used in this module's own code.
+    implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
 
     // Ingestion pipeline
@@ -91,6 +144,11 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
+
+    // Encrypts the database at rest. Room talks to it through the standard
+    // SupportSQLite interfaces, so no DAO or query changes are needed.
+    implementation(libs.sqlcipher.android)
+    implementation(libs.androidx.sqlite)
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

@@ -9,7 +9,13 @@ local.properties
 *.iml
 app/build/
 app/google-services.json
-app/schemas/
+
+# app/schemas/ is deliberately NOT ignored. Room exports one JSON file per
+# schema version there, and they are the record of how the database has changed.
+# Committed, a migration can be tested against the real prior schema and an
+# accidental schema change shows up in review as a modified file. Ignored, both
+# of those disappear — and a wrong migration is the classic way an Android app
+# destroys user data.
 
 # Backend
 backend/node_modules/
