@@ -9,6 +9,7 @@ import com.spendwise.domain.repository.ExpenseRepository
 import com.spendwise.domain.repository.GoalRepository
 import com.spendwise.domain.repository.IncomeRepository
 import com.spendwise.domain.repository.RecurringEntryRepository
+import com.spendwise.domain.usecase.ReconcileRecurringPaymentsUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -33,11 +34,19 @@ class SyncWorker @AssistedInject constructor(
     private val expenseRepository: ExpenseRepository,
     private val incomeRepository: IncomeRepository,
     private val goalRepository: GoalRepository,
-    private val recurringRepository: RecurringEntryRepository
+    private val recurringRepository: RecurringEntryRepository,
+    private val reconcileRecurringPayments: ReconcileRecurringPaymentsUseCase
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         var anyFailure = false
+
+        // Before the uploads, so anything it changes goes out in this same sweep
+        // rather than waiting for the next one. Local-only work, so a failure
+        // here does not warrant retrying the network syncs — a due date that is
+        // one pass stale is a far smaller problem than a sync loop.
+        runCatching { reconcileRecurringPayments() }
+            .onFailure { Log.w(TAG, "Reconciling recurring payments failed.", it) }
 
         runCatching { expenseRepository.syncPendingExpenses() }
             .onFailure { Log.w(TAG, "Expense sync failed.", it); anyFailure = true }

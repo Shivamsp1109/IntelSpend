@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         LearnedCategoryEntity::class,
         DismissedRecurringCandidateEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = true
 )
 abstract class SpendWiseDatabase : RoomDatabase() {

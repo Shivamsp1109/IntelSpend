@@ -28,5 +28,22 @@ data class RecurringEntry(
      * How sure the detector was, in [0, 1]. Always 1.0 for a manual entry: the
      * user asserting a commitment exists is not a guess.
      */
-    val confidence: Double = 1.0
-)
+    val confidence: Double = 1.0,
+    val status: RecurringStatus = RecurringStatus.ACTIVE,
+    /** When the most recent payment for this went out, if one is known. */
+    val lastOccurrenceDate: Long? = null,
+    /** When the next one is expected, projected from [lastOccurrenceDate]. */
+    val nextDueDate: Long? = null,
+    /**
+     * The day of the month this is anchored to, for monthly and longer cadences.
+     *
+     * Carried separately rather than re-read from the last payment each time. A
+     * commitment due on the 31st is paid on the 28th in February, and projecting
+     * the next date from *that* would leave it stuck on the 28th for good —
+     * one short month would permanently walk it backwards through the calendar.
+     */
+    val dueDayOfMonth: Int? = null
+) {
+    /** Whether this should be counted in commitments and reminded about now. */
+    val isLive: Boolean get() = status.isLive
+}

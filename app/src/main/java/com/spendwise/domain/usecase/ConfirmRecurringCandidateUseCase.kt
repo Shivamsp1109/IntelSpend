@@ -6,7 +6,9 @@ import com.spendwise.data.local.RecurringExpenseCrossRef
 import com.spendwise.data.local.toEntity
 import com.spendwise.domain.model.RecurringCandidate
 import com.spendwise.domain.model.RecurringEntry
+import com.spendwise.domain.model.RecurringSchedule
 import com.spendwise.domain.model.RecurringSource
+import com.spendwise.domain.model.RecurringStatus
 import com.spendwise.util.SyncScheduler
 import javax.inject.Inject
 
@@ -23,6 +25,8 @@ class ConfirmRecurringCandidateUseCase @Inject constructor(
     private val syncScheduler: SyncScheduler
 ) {
     suspend operator fun invoke(candidate: RecurringCandidate): Int {
+        val lastOccurrence = candidate.lastOccurrenceDate
+
         val entry = RecurringEntry(
             title = candidate.merchant,
             amount = candidate.averageAmount,
@@ -33,7 +37,18 @@ class ConfirmRecurringCandidateUseCase @Inject constructor(
             category = candidate.category,
             source = RecurringSource.DETECTED,
             occurrenceCount = candidate.occurrenceCount,
-            confidence = candidate.confidence
+            confidence = candidate.confidence,
+            status = RecurringStatus.ACTIVE,
+            lastOccurrenceDate = lastOccurrence,
+            // Projected straight away rather than waiting for the next payment,
+            // so a commitment is useful the moment it is accepted instead of
+            // going quiet for a cycle.
+            nextDueDate = RecurringSchedule.nextDueDateMillis(
+                lastOccurrence = lastOccurrence,
+                cadence = candidate.cadence,
+                dueDayOfMonth = candidate.dueDayOfMonth
+            ),
+            dueDayOfMonth = candidate.dueDayOfMonth
         )
 
         val recurringId = recurringEntryDao.insertRecurring(entry.toEntity()).toInt()

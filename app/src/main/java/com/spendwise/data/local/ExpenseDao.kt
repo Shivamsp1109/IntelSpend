@@ -126,6 +126,34 @@ interface ExpenseDao {
     fun observeExpenseTimeSeries(): Flow<List<ExpenseTimeSeriesRow>>
 
     /**
+     * Payments not yet attributed to any tracked commitment.
+     *
+     * What reconciliation works from. A commitment only knows a payment has gone
+     * out if something links the two, and nothing does that at import time —
+     * imports arrive in bulk, out of order, and often before the commitment was
+     * confirmed at all. Sweeping the unlinked rows afterwards repairs all three
+     * cases with one pass, and is safely repeatable because a linked row stops
+     * appearing here.
+     */
+    @Query(
+        """
+        SELECT id       AS expenseId,
+               merchant AS merchant,
+               date     AS date,
+               amount   AS amount,
+               category AS category,
+               nature   AS nature,
+               currency AS currency
+        FROM expenses
+        WHERE merchant IS NOT NULL AND merchant != ''
+          AND nature IN ('Spending', 'LoanRepayment', 'Investment', 'Savings')
+          AND id NOT IN (SELECT expenseId FROM recurring_expense_cross_ref)
+        ORDER BY date ASC
+        """
+    )
+    suspend fun getUnlinkedExpenses(): List<ExpenseTimeSeriesRow>
+
+    /**
      * Re-files every row for one merchant that currently sits under the given
      * category and nature.
      *

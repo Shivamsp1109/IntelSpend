@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth, requireSameUser } = require('../middleware/auth');
 const { syncLimiter } = require('../middleware/rateLimit');
+const { pageParams, page } = require('../services/pagination');
 const { ensureUserExists } = require('../services/users');
 
 const router = express.Router();
@@ -32,20 +33,28 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         source,
         occurrence_count,
         confidence,
+        status,
+        last_occurrence_date,
+        next_due_date,
+        due_day_of_month,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
-        title            = VALUES(title),
-        amount           = VALUES(amount),
-        cadence          = VALUES(cadence),
-        type             = VALUES(type),
-        currency         = VALUES(currency),
-        nature           = VALUES(nature),
-        category         = VALUES(category),
-        source           = VALUES(source),
-        occurrence_count = VALUES(occurrence_count),
-        confidence       = VALUES(confidence),
-        updated_at       = VALUES(updated_at)`,
+        title                = VALUES(title),
+        amount               = VALUES(amount),
+        cadence              = VALUES(cadence),
+        type                 = VALUES(type),
+        currency             = VALUES(currency),
+        nature               = VALUES(nature),
+        category             = VALUES(category),
+        source               = VALUES(source),
+        occurrence_count     = VALUES(occurrence_count),
+        confidence           = VALUES(confidence),
+        status               = VALUES(status),
+        last_occurrence_date = VALUES(last_occurrence_date),
+        next_due_date        = VALUES(next_due_date),
+        due_day_of_month     = VALUES(due_day_of_month),
+        updated_at           = VALUES(updated_at)`,
       [
         req.user.uid,
         Number(entry.localId),
@@ -61,6 +70,12 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         entry.source || 'MANUAL',
         Number.isFinite(Number(entry.occurrenceCount)) ? Number(entry.occurrenceCount) : 0,
         clampConfidence(entry.confidence),
+        entry.status || 'ACTIVE',
+        // Null rather than zero when absent: a commitment with no payments yet
+        // genuinely has no last occurrence, and 1970 is not a date anyone means.
+        nullableNumber(entry.lastOccurrenceDate),
+        nullableNumber(entry.nextDueDate),
+        nullableNumber(entry.dueDayOfMonth),
         Date.now()
       ]
     );
@@ -115,6 +130,108 @@ router.delete('/link', requireFirebaseAuth, requireSameUser, syncLimiter, async 
     );
 
     return res.status(204).send();
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * GET /recurring
+ * Paginated read for restore. Returns commitments in local_id order.
+ *
+ * Restoring these matters more than it looks. Without them a reinstall recovers
+ * every transaction and none of the commitments, so the app would re-detect them
+ * from scratch, re-ask about every one the user had already dismissed, and know
+ * nothing about what is due next.
+ */
+router.get('/', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
+  try {
+    const { after, limit } = pageParams(req.query);
+
+    const [rows] = await pool.execute(
+      `SELECT local_id AS localId,
+              title,
+              amount,
+              cadence,
+              type,
+              currency,
+              nature,
+              category,
+              source,
+              occurrence_count     AS occurrenceCount,
+              confidence,
+              status,
+              last_occurrence_date AS lastOccurrenceDate,
+              next_due_date        AS nextDueDate,
+              due_day_of_month     AS dueDayOfMonth
+         FROM recurring
+        WHERE uid = ? AND local_id > ?
+        ORDER BY local_id ASC
+        LIMIT ${limit}`,
+      [req.user.uid, after]
+    );
+
+    return res.json(page(rows, limit));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * GET /recurring/links
+ * Paginated read of which payments settled which commitment.
+ *
+ * Keyed on expense_local_id for the cursor because that is the column with a
+ * useful ordering — a commitment has many links, so paging on the recurring id
+ * would put an unbounded number of rows in one page.
+ */
+router.get('/links', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
+  try {
+    const { after, limit } = pageParams(req.query);
+
+    const [rows] = await pool.execute(
+      `SELECT expense_local_id   AS localId,
+              recurring_local_id AS recurringLocalId
+         FROM recurring_expense_cross_ref
+        WHERE uid = ? AND expense_local_id > ?
+        ORDER BY expense_local_id ASC
+        LIMIT ${limit}`,
+      [req.user.uid, after]
+    );
+
+    return res.json(page(rows, limit));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * GET /recurring/dismissals
+ * Paginated read of rejected detections, so a restore does not resurrect them.
+ */
+router.get('/dismissals', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
+  try {
+    const { after, limit } = pageParams(req.query);
+
+    const [rows] = await pool.execute(
+      `SELECT id       AS localId,
+              signature,
+              merchant,
+              currency,
+              nature,
+              category,
+              cadence,
+              last_seen_amount          AS lastSeenAmount,
+              last_seen_occurrence_date AS lastSeenOccurrenceDate,
+              dismissed_at              AS dismissedAt
+         FROM dismissed_recurring_candidates
+        WHERE uid = ? AND id > ?
+        ORDER BY id ASC
+        LIMIT ${limit}`,
+      [req.user.uid, after]
+    );
+
+    return res.json(page(rows, limit));
   } catch (error) {
     return next(error);
   }
@@ -180,6 +297,12 @@ router.post('/dismissals', requireFirebaseAuth, requireSameUser, syncLimiter, as
     return next(error);
   }
 });
+
+function nullableNumber(value) {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 /** A score outside [0, 1] is meaningless; store something sane rather than refuse. */
 function clampConfidence(value) {

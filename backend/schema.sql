@@ -107,6 +107,16 @@ CREATE TABLE IF NOT EXISTS recurring (
     -- it was. Both are 0 / 1.0 for a hand-entered commitment.
     occurrence_count INT NOT NULL DEFAULT 0,
     confidence DOUBLE NOT NULL DEFAULT 1,
+    -- RecurringStatus enum name: 'ACTIVE', 'PAUSED' or 'ENDED'. A paused gym
+    -- membership must stop counting and stop reminding without being deleted —
+    -- deleting would lose what it costs and let detection re-suggest it.
+    status     VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    last_occurrence_date BIGINT DEFAULT NULL,
+    next_due_date        BIGINT DEFAULT NULL,
+    -- The day of the month this is anchored to. Stored rather than derived: a
+    -- commitment due on the 31st is paid on the 28th in February, and projecting
+    -- from that date would walk it backwards through the calendar for good.
+    due_day_of_month     INT DEFAULT NULL,
     updated_at BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_recurring (uid, local_id),
     CONSTRAINT fk_recurring_user
@@ -224,3 +234,7 @@ CREATE TABLE IF NOT EXISTS llm_usage (
 -- ALTER TABLE recurring ADD COLUMN source VARCHAR(20) NOT NULL DEFAULT 'MANUAL';
 -- ALTER TABLE recurring ADD COLUMN occurrence_count INT NOT NULL DEFAULT 0;
 -- ALTER TABLE recurring ADD COLUMN confidence DOUBLE NOT NULL DEFAULT 1;
+-- ALTER TABLE recurring ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
+-- ALTER TABLE recurring ADD COLUMN last_occurrence_date BIGINT DEFAULT NULL;
+-- ALTER TABLE recurring ADD COLUMN next_due_date BIGINT DEFAULT NULL;
+-- ALTER TABLE recurring ADD COLUMN due_day_of_month INT DEFAULT NULL;

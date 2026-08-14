@@ -1,5 +1,7 @@
 package com.spendwise.domain.model
 
+import com.spendwise.domain.model.RecurringSchedule.toLocalDate
+
 /**
  * A repeating payment the app believes it has found, before the user has said
  * whether it is real.
@@ -30,6 +32,36 @@ data class RecurringCandidate(
     val lastOccurrenceDate: Long get() = occurrences.maxOf { it.date }
 
     /**
+     * The day of the month this commitment is anchored to, for cadences where
+     * that means anything.
+     *
+     * Read from the payments rather than from the latest one alone, because the
+     * latest one may be the distorted one: a commitment due on the 31st shows up
+     * as the 28th every February, and anchoring to that would walk it backwards
+     * through the calendar permanently.
+     *
+     * Payments that land on the last day of their month are treated as
+     * month-end rather than as their literal date — 28 February, 30 April and
+     * 31 May are the same instruction, and only the clamp in
+     * [RecurringSchedule.nextDueDate] can express it.
+     */
+    val dueDayOfMonth: Int?
+        get() {
+            if (cadence !in ANCHORED_CADENCES) return null
+
+            val days = occurrences.map { it.date.toLocalDate() }
+            if (days.isEmpty()) return null
+
+            val monthEnd = days.count { it.dayOfMonth == it.lengthOfMonth() }
+            if (monthEnd * 2 > days.size) return LAST_POSSIBLE_DAY
+
+            return days.groupingBy { it.dayOfMonth }
+                .eachCount()
+                .maxByOrNull { (day, count) -> count * 100 + day }
+                ?.key
+        }
+
+    /**
      * A stable identity for this candidate, so a dismissal can be matched back to
      * it on a later scan. Merchant alone is not enough: the same payee can appear
      * as both a subscription and a one-off refund.
@@ -38,6 +70,15 @@ data class RecurringCandidate(
         get() = signatureOf(merchant, currency, nature, category)
 
     companion object {
+        private val ANCHORED_CADENCES = setOf(
+            RecurringCadence.MONTHLY,
+            RecurringCadence.QUARTERLY,
+            RecurringCadence.YEARLY
+        )
+
+        /** Always clamped down to the real length of the target month. */
+        private const val LAST_POSSIBLE_DAY = 31
+
         fun signatureOf(
             merchant: String,
             currency: Currency,

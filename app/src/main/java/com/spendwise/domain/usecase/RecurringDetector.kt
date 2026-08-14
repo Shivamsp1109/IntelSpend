@@ -10,6 +10,7 @@ import com.spendwise.domain.model.RecurringCadence
 import com.spendwise.domain.model.RecurringCandidate
 import com.spendwise.domain.model.RecurringEntry
 import com.spendwise.domain.model.RecurringOccurrence
+import com.spendwise.domain.model.RecurringSchedule
 import com.spendwise.domain.model.RecurringType
 import com.spendwise.domain.model.TransactionNature
 import kotlin.math.abs
@@ -348,14 +349,8 @@ object RecurringDetector {
  */
 private fun RecurringCadence.isDetectable(): Boolean = this != RecurringCadence.DAILY
 
-private fun RecurringCadence.expectedDays(): Double = when (this) {
-    RecurringCadence.DAILY -> 1.0
-    RecurringCadence.WEEKLY -> 7.0
-    RecurringCadence.BIWEEKLY -> 14.0
-    RecurringCadence.MONTHLY -> 30.44
-    RecurringCadence.QUARTERLY -> 91.31
-    RecurringCadence.YEARLY -> 365.25
-}
+/** Shared with matching, so the two cannot disagree about what "monthly" means. */
+private fun RecurringCadence.expectedDays(): Double = RecurringSchedule.periodDays(this)
 
 /** Wide enough for month lengths, weekends and a late working day. */
 private fun RecurringCadence.toleranceDays(): Double = when (this) {

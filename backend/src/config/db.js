@@ -62,7 +62,11 @@ const REQUIRED_COLUMNS = [
   { table: 'recurring', column: 'category', definition: "VARCHAR(100) NOT NULL DEFAULT 'Other'" },
   { table: 'recurring', column: 'source', definition: "VARCHAR(20) NOT NULL DEFAULT 'MANUAL'" },
   { table: 'recurring', column: 'occurrence_count', definition: 'INT NOT NULL DEFAULT 0' },
-  { table: 'recurring', column: 'confidence', definition: 'DOUBLE NOT NULL DEFAULT 1' }
+  { table: 'recurring', column: 'confidence', definition: 'DOUBLE NOT NULL DEFAULT 1' },
+  { table: 'recurring', column: 'status', definition: "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'" },
+  { table: 'recurring', column: 'last_occurrence_date', definition: 'BIGINT DEFAULT NULL' },
+  { table: 'recurring', column: 'next_due_date', definition: 'BIGINT DEFAULT NULL' },
+  { table: 'recurring', column: 'due_day_of_month', definition: 'INT DEFAULT NULL' }
 ];
 
 /**

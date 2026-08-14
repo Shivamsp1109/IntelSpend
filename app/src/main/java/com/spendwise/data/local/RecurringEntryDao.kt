@@ -70,6 +70,61 @@ interface RecurringEntryDao {
     )
     suspend fun getRecurringForExpense(expenseId: Int): RecurringEntity?
 
+    /**
+     * Live commitments only.
+     *
+     * Paused and ended entries are excluded here rather than at each call site,
+     * so a new caller cannot forget and quietly start counting a cancelled
+     * subscription towards what the user owes.
+     */
+    @Query("SELECT * FROM recurring WHERE status = 'ACTIVE' ORDER BY title ASC")
+    fun observeActiveRecurring(): Flow<List<RecurringEntity>>
+
+    @Query("SELECT * FROM recurring WHERE status = 'ACTIVE'")
+    suspend fun getActiveRecurring(): List<RecurringEntity>
+
+    /**
+     * Live commitments falling due within a window, for the reminder worker.
+     *
+     * Ordered by date so the soonest is mentioned first when several land together.
+     */
+    @Query(
+        """
+        SELECT * FROM recurring
+        WHERE status = 'ACTIVE'
+          AND nextDueDate IS NOT NULL
+          AND nextDueDate BETWEEN :from AND :until
+        ORDER BY nextDueDate ASC
+        """
+    )
+    suspend fun getDueBetween(from: Long, until: Long): List<RecurringEntity>
+
+    @Query("UPDATE recurring SET status = :status, isSynced = 0 WHERE id = :id")
+    suspend fun updateStatus(id: Int, status: String)
+
+    /**
+     * Records that a payment landed, and when the next one is now expected.
+     *
+     * One statement rather than a read-modify-write, so two imports finishing at
+     * once cannot each read the old date and write conflicting projections.
+     */
+    @Query(
+        """
+        UPDATE recurring
+        SET lastOccurrenceDate = :lastOccurrenceDate,
+            nextDueDate = :nextDueDate,
+            occurrenceCount = occurrenceCount + :additionalOccurrences,
+            isSynced = 0
+        WHERE id = :id
+        """
+    )
+    suspend fun recordOccurrence(
+        id: Int,
+        lastOccurrenceDate: Long,
+        nextDueDate: Long,
+        additionalOccurrences: Int
+    )
+
     // ── Dismissed detection candidates ────────────────────────────────────────
 
     @Query("SELECT * FROM dismissed_recurring_candidates")

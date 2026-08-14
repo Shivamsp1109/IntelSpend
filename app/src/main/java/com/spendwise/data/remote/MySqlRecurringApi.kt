@@ -30,4 +30,27 @@ interface MySqlRecurringApi {
         @Header("Authorization") bearerToken: String,
         @Body dismissal: RecurringDismissalPayload
     ): Response<Unit>
+
+    // ── Restore reads ─────────────────────────────────────────────────────────
+
+    @retrofit2.http.GET("recurring")
+    suspend fun listRecurring(
+        @Header("Authorization") bearerToken: String,
+        @retrofit2.http.Query("after") after: Int,
+        @retrofit2.http.Query("limit") limit: Int
+    ): Response<RestorePage<RecurringSyncPayload>>
+
+    @retrofit2.http.GET("recurring/links")
+    suspend fun listLinks(
+        @Header("Authorization") bearerToken: String,
+        @retrofit2.http.Query("after") after: Int,
+        @retrofit2.http.Query("limit") limit: Int
+    ): Response<RestorePage<RecurringLinkRow>>
+
+    @retrofit2.http.GET("recurring/dismissals")
+    suspend fun listDismissals(
+        @Header("Authorization") bearerToken: String,
+        @retrofit2.http.Query("after") after: Int,
+        @retrofit2.http.Query("limit") limit: Int
+    ): Response<RestorePage<RecurringDismissalRow>>
 }

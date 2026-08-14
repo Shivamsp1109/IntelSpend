@@ -317,3 +317,38 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         )
     }
 }
+
+/**
+ * Room migration from schema version 10 → 11.
+ *
+ * Gives a commitment a life beyond "it exists".
+ *
+ * **Status.** A gym membership paused over the winter should stop being counted
+ * and stop generating reminders without being deleted — deleting it would lose
+ * what it costs and let detection re-suggest it from scratch. Existing rows are
+ * ACTIVE, which is what every commitment recorded so far has been.
+ *
+ * **Scheduling.** [nextDueDate] is what a reminder fires from and
+ * [lastOccurrenceDate] is what it is projected from, so both have to be stored
+ * rather than recomputed — the payments that produced them may be spread across
+ * imports that no longer agree.
+ *
+ * [dueDayOfMonth] looks redundant next to those and is not. A commitment due on
+ * the 31st is paid on the 28th in February, and projecting the following month
+ * from that date would leave it stuck on the 28th permanently: one short month
+ * would walk it backwards through the calendar for good. Anchoring the day
+ * separately is what keeps it on the 31st.
+ *
+ * All four are nullable or defaulted, so existing rows need no backfill: a
+ * commitment with no linked payments genuinely has no last occurrence, and
+ * inventing one would put a wrong date into a reminder.
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `status` TEXT NOT NULL DEFAULT 'ACTIVE'")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `lastOccurrenceDate` INTEGER")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `nextDueDate` INTEGER")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `dueDayOfMonth` INTEGER")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_recurring_status` ON `recurring` (`status`)")
+    }
+}

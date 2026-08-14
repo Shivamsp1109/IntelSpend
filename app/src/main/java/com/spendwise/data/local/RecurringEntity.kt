@@ -12,6 +12,7 @@ import com.spendwise.domain.model.ExpenseCategory
 import com.spendwise.domain.model.RecurringCadence
 import com.spendwise.domain.model.RecurringEntry
 import com.spendwise.domain.model.RecurringSource
+import com.spendwise.domain.model.RecurringStatus
 import com.spendwise.domain.model.RecurringType
 import com.spendwise.domain.model.TransactionNature
 
@@ -19,7 +20,13 @@ import com.spendwise.domain.model.TransactionNature
 // RecurringEntity
 // ─────────────────────────────────────────────────────────────────────────────
 
-@Entity(tableName = "recurring")
+// Indexed on status because every screen and worker that reads commitments
+// filters to the live ones — a paused membership must not generate a reminder or
+// count towards what is owed this month.
+@Entity(
+    tableName = "recurring",
+    indices = [Index("status")]
+)
 data class RecurringEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
@@ -46,7 +53,13 @@ data class RecurringEntity(
     /** [RecurringSource] name: whether the user entered this or the app found it. */
     val source: String = RecurringSource.MANUAL.name,
     val occurrenceCount: Int = 0,
-    val confidence: Double = 1.0
+    val confidence: Double = 1.0,
+    /** [RecurringStatus] name: ACTIVE, PAUSED or ENDED. */
+    val status: String = RecurringStatus.ACTIVE.name,
+    val lastOccurrenceDate: Long? = null,
+    val nextDueDate: Long? = null,
+    /** See [RecurringEntry.dueDayOfMonth] for why this is stored rather than derived. */
+    val dueDayOfMonth: Int? = null
 )
 
 fun RecurringEntity.toDomain(): RecurringEntry = RecurringEntry(
@@ -60,7 +73,11 @@ fun RecurringEntity.toDomain(): RecurringEntry = RecurringEntry(
     category = ExpenseCategory.fromLabel(category),
     source = RecurringSource.fromName(source),
     occurrenceCount = occurrenceCount,
-    confidence = confidence
+    confidence = confidence,
+    status = RecurringStatus.fromName(status),
+    lastOccurrenceDate = lastOccurrenceDate,
+    nextDueDate = nextDueDate,
+    dueDayOfMonth = dueDayOfMonth
 )
 
 fun RecurringEntry.toEntity(): RecurringEntity = RecurringEntity(
@@ -74,7 +91,11 @@ fun RecurringEntry.toEntity(): RecurringEntity = RecurringEntity(
     category = category.label,
     source = source.name,
     occurrenceCount = occurrenceCount,
-    confidence = confidence
+    confidence = confidence,
+    status = status.name,
+    lastOccurrenceDate = lastOccurrenceDate,
+    nextDueDate = nextDueDate,
+    dueDayOfMonth = dueDayOfMonth
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

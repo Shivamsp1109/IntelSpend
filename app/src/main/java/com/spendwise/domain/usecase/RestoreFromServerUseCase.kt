@@ -5,10 +5,14 @@ import com.spendwise.data.local.ExpenseDao
 import com.spendwise.data.local.ExpenseEntity
 import com.spendwise.data.local.IncomeDao
 import com.spendwise.data.local.IncomeEntity
+import com.spendwise.data.local.RecurringEntryDao
+import com.spendwise.data.local.RecurringExpenseCrossRef
 import com.spendwise.data.remote.ExpenseSyncPayload
 import com.spendwise.data.remote.IncomeSyncPayload
 import com.spendwise.data.remote.MySqlExpenseDataSource
 import com.spendwise.data.remote.MySqlIncomeDataSource
+import com.spendwise.data.remote.MySqlRecurringDataSource
+import com.spendwise.data.remote.toRestoredEntity
 import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.ExpenseSource
 import javax.inject.Inject
@@ -37,7 +41,9 @@ class RestoreFromServerUseCase @Inject constructor(
     private val expenseDao: ExpenseDao,
     private val incomeDao: IncomeDao,
     private val expenseDataSource: MySqlExpenseDataSource,
-    private val incomeDataSource: MySqlIncomeDataSource
+    private val incomeDataSource: MySqlIncomeDataSource,
+    private val recurringEntryDao: RecurringEntryDao,
+    private val recurringDataSource: MySqlRecurringDataSource
 ) {
     suspend operator fun invoke(): RestoreOutcome {
         if (expenseDao.countExpenses() > 0 || incomeDao.countIncomes() > 0) {
@@ -59,11 +65,59 @@ class RestoreFromServerUseCase @Inject constructor(
             if (expenses.isNotEmpty()) expenseDao.insertExpenses(expenses)
             if (incomes.isNotEmpty()) incomeDao.insertIncomes(incomes)
 
-            RestoreOutcome.Restored(expenses.size, incomes.size)
+            val commitments = restoreCommitments()
+
+            RestoreOutcome.Restored(expenses.size, incomes.size, commitments)
         }.getOrElse { error ->
             Log.w(TAG, "Restore from server failed.", error)
             RestoreOutcome.Failed
         }
+    }
+
+    /**
+     * Rebuilds commitments, the payments that settled them, and the detections
+     * the user rejected.
+     *
+     * Best-effort on purpose, and deliberately after the transactions are in.
+     * Without commitments the app still holds every transaction and will simply
+     * re-detect the patterns; failing the whole restore over them would trade a
+     * recoverable gap for the loss of the history itself.
+     *
+     * Links are inserted after the commitments they point at, because the
+     * cross-ref has foreign keys in both directions and would be rejected
+     * otherwise. Any link whose expense did not come back is skipped rather than
+     * allowed to fail the batch.
+     */
+    private suspend fun restoreCommitments(): Int = runCatching {
+        val entries = recurringDataSource.fetchAllRecurring().map { it.toRestoredEntity() }
+        val links = recurringDataSource.fetchAllLinks()
+        val dismissals = recurringDataSource.fetchAllDismissals().map { it.toRestoredEntity() }
+
+        for (entry in entries) {
+            runCatching { recurringEntryDao.insertRecurring(entry) }
+                .onFailure { Log.w(TAG, "Could not restore commitment ${entry.title}.", it) }
+        }
+
+        for (link in links) {
+            runCatching {
+                recurringEntryDao.linkExpense(
+                    RecurringExpenseCrossRef(
+                        recurringId = link.recurringLocalId,
+                        expenseId = link.localId
+                    )
+                )
+            }.onFailure { Log.w(TAG, "Could not restore a payment link.", it) }
+        }
+
+        for (dismissal in dismissals) {
+            runCatching { recurringEntryDao.insertDismissedCandidate(dismissal) }
+                .onFailure { Log.w(TAG, "Could not restore a dismissal.", it) }
+        }
+
+        entries.size
+    }.getOrElse { error ->
+        Log.w(TAG, "Could not restore commitments; transactions were kept.", error)
+        0
     }
 
     private companion object {
@@ -113,7 +167,11 @@ internal fun IncomeSyncPayload.toRestoredEntity() = IncomeEntity(
 )
 
 sealed class RestoreOutcome {
-    data class Restored(val expenses: Int, val incomes: Int) : RestoreOutcome() {
+    data class Restored(
+        val expenses: Int,
+        val incomes: Int,
+        val commitments: Int = 0
+    ) : RestoreOutcome() {
         val total: Int get() = expenses + incomes
     }
 
