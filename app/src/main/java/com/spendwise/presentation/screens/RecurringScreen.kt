@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.MatchBasis
 import com.spendwise.domain.model.RecurringCadence
 import com.spendwise.domain.model.RecurringCandidate
 import com.spendwise.domain.model.RecurringEntry
@@ -161,10 +162,17 @@ fun RecurringScreen(
 
         if (state.filter == RecurringFilter.Detected) {
             if (state.candidates.isEmpty()) {
+                // Says what a pattern actually needs, rather than "import more".
+                // Someone who already has months of data and sees nothing needs
+                // to know which condition their history fails, not to be told to
+                // do the thing they have already done.
                 EmptyRecurringState(
                     if (state.isLoaded) {
-                        "No repeating payments found. Import a few months of statements " +
-                            "and they will show up here."
+                        "Nothing found yet.\n\n" +
+                            "A payment shows up here once there are three of them to the " +
+                            "same place, spaced about evenly — weekly, monthly, and so on — " +
+                            "for a similar amount, with the most recent one fairly recent.\n\n" +
+                            "Yearly and quarterly ones need only two."
                     } else {
                         "Looking through your history…"
                     }
@@ -490,6 +498,12 @@ private fun describe(candidate: RecurringCandidate): String = buildString {
         if (candidate.type == RecurringType.FIXED) ", same amount each time"
         else ", amount varies"
     )
+    // Says plainly what tied these together, because it changes how much the
+    // user should trust it. Matched on the sum alone, the payments may simply
+    // have cost the same — only they can tell.
+    if (candidate.basis == MatchBasis.AMOUNT) {
+        append(" · matched by amount, the names differ")
+    }
     if (candidate.confidence < 0.6) append(" · worth checking")
     append(" · ${(candidate.confidence * 100).roundToInt()}% sure")
 }

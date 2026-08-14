@@ -143,11 +143,16 @@ class RecurringMatcherTest {
         assertTrue(matches.isEmpty())
     }
 
+    /**
+     * A payee that does not match and a sum that does not match leaves nothing
+     * to go on. (An unfamiliar payee paying the *exact* sum is a different case,
+     * and deliberately does attach — see the differently-named tests below.)
+     */
     @Test
-    fun `a different merchant is never attributed`() {
+    fun `a different merchant paying a different amount is never attributed`() {
         val matches = RecurringMatcher.match(
-            listOf(entry(title = "Netflix")),
-            listOf(payment(merchant = "Spotify"))
+            listOf(entry(title = "Netflix", amount = 649.0)),
+            listOf(payment(merchant = "Spotify", amount = 199.0))
         )
 
         assertTrue(matches.isEmpty())
@@ -186,19 +191,33 @@ class RecurringMatcherTest {
         assertEquals(1, matches.size)
     }
 
+    /**
+     * Currency is absolute: a rupee commitment is not settled by a dollar
+     * payment however well everything else lines up.
+     *
+     * Nature is not absolute, and deliberately so. The same debit is routinely
+     * classified one way by the user and another by the model, and refusing the
+     * match on that alone left hand-entered commitments permanently unsettled.
+     */
     @Test
-    fun `currency and nature must both agree`() {
-        val wrongCurrency = RecurringMatcher.match(
-            listOf(entry(currency = Currency.INR)),
+    fun `currency must agree even when the amount is exact`() {
+        val matches = RecurringMatcher.match(
+            listOf(entry(currency = Currency.INR, amount = 649.0)),
             listOf(payment(currency = Currency.USD, amount = 649.0))
         )
-        val wrongNature = RecurringMatcher.match(
-            listOf(entry(nature = TransactionNature.Spending)),
-            listOf(payment(nature = TransactionNature.Investment))
+
+        assertTrue(matches.isEmpty())
+    }
+
+    /** A mismatched nature costs the strong match, not the match itself. */
+    @Test
+    fun `a mismatched nature alone does not block an exact payment`() {
+        val matches = RecurringMatcher.match(
+            listOf(entry(nature = TransactionNature.Spending, amount = 649.0)),
+            listOf(payment(nature = TransactionNature.Investment, amount = 649.0))
         )
 
-        assertTrue(wrongCurrency.isEmpty())
-        assertTrue(wrongNature.isEmpty())
+        assertEquals(1, matches.size)
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -302,6 +321,86 @@ class RecurringMatcherTest {
 
         assertEquals(1, onTime.size)
         assertTrue("a payment a week out is next week's", tooFar.isEmpty())
+    }
+
+    // ── When the labels do not agree ──────────────────────────────────────────
+
+    /**
+     * The case a hand-entered commitment creates. The user records an EMI in
+     * July with their own wording and category; in August the same debit arrives
+     * inside a bank statement under the lender's registered name, with a
+     * narration full of reference codes and a nature the model chose. Nothing
+     * agrees except the sum and the month — and requiring the name to match
+     * meant the commitment was never settled and went on reminding.
+     */
+    @Test
+    fun `an exact amount in the window settles a differently-named commitment`() {
+        val emi = entry(title = "Car EMI", amount = 18_500.0, nature = TransactionNature.Spending)
+        val statementRow = payment(
+            merchant = "HDFC BANK LTD EMI 8829",
+            amount = 18_500.0,
+            nature = TransactionNature.LoanRepayment
+        )
+
+        val matches = RecurringMatcher.match(listOf(emi), listOf(statementRow))
+
+        assertEquals(1, matches.size)
+        assertEquals(listOf(statementRow.expenseId), matches.single().expenseIds)
+    }
+
+    /** Only an exact sum earns that latitude; an approximate one does not. */
+    @Test
+    fun `a differently-named payment of a merely similar amount is ignored`() {
+        val emi = entry(title = "Car EMI", amount = 18_500.0)
+
+        val matches = RecurringMatcher.match(
+            listOf(emi),
+            listOf(payment(merchant = "Some Shop", amount = 17_900.0))
+        )
+
+        assertTrue(matches.isEmpty())
+    }
+
+    /**
+     * A coincidental purchase of exactly the right size must not ride along with
+     * the real payment and inflate the commitment's history.
+     */
+    @Test
+    fun `a named payment is preferred over a coincidental one of the same value`() {
+        val netflix = entry(title = "Netflix", amount = 649.0)
+        val real = payment(merchant = "Netflix", amount = 649.0)
+        val coincidence = payment(merchant = "Corner Shop", amount = 649.0)
+
+        val matches = RecurringMatcher.match(listOf(netflix), listOf(coincidence, real))
+
+        assertEquals(listOf(real.expenseId), matches.single().expenseIds)
+    }
+
+    /** The window still binds: an exact sum outside it is next cycle's business. */
+    @Test
+    fun `an exact amount outside the window is still refused`() {
+        val matches = RecurringMatcher.match(
+            listOf(entry(title = "Car EMI", amount = 18_500.0)),
+            listOf(
+                payment(
+                    merchant = "HDFC BANK LTD EMI 8829",
+                    amount = 18_500.0,
+                    date = LocalDate.of(2026, 8, 25)
+                )
+            )
+        )
+
+        assertTrue(matches.isEmpty())
+    }
+
+    @Test
+    fun `currency still has to agree however exact the sum`() {
+        val matches = RecurringMatcher.match(
+            listOf(entry(title = "Car EMI", amount = 18_500.0, currency = Currency.INR)),
+            listOf(payment(merchant = "Anything", amount = 18_500.0, currency = Currency.USD))
+        )
+
+        assertTrue(matches.isEmpty())
     }
 
     @Test

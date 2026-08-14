@@ -107,18 +107,25 @@ interface ExpenseDao {
      * like clockwork, but its amount is whatever was spent that month, so it is
      * a repeating *event* rather than a fixed commitment, and treating it as one
      * would put a number in the user's obligations that means nothing.
+     *
+     * The merchant falls back to the title. Merchant is optional when adding a
+     * transaction by hand, so requiring it — as the bulk-recategorise query
+     * legitimately does, since a nameless group cannot be fixed as a group —
+     * made every hand-entered payment invisible to detection. A commitment is
+     * identified by what repeats, and "Car EMI" typed in the title identifies it
+     * perfectly well.
      */
     @Query(
         """
-        SELECT id       AS expenseId,
-               merchant AS merchant,
-               date     AS date,
-               amount   AS amount,
+        SELECT id     AS expenseId,
+               COALESCE(NULLIF(TRIM(merchant), ''), title) AS merchant,
+               date   AS date,
+               amount AS amount,
                category AS category,
                nature   AS nature,
                currency AS currency
         FROM expenses
-        WHERE merchant IS NOT NULL AND merchant != ''
+        WHERE TRIM(COALESCE(NULLIF(TRIM(merchant), ''), title)) != ''
           AND nature IN ('Spending', 'LoanRepayment', 'Investment', 'Savings')
         ORDER BY merchant ASC, date ASC
         """
@@ -137,15 +144,15 @@ interface ExpenseDao {
      */
     @Query(
         """
-        SELECT id       AS expenseId,
-               merchant AS merchant,
-               date     AS date,
-               amount   AS amount,
+        SELECT id     AS expenseId,
+               COALESCE(NULLIF(TRIM(merchant), ''), title) AS merchant,
+               date   AS date,
+               amount AS amount,
                category AS category,
                nature   AS nature,
                currency AS currency
         FROM expenses
-        WHERE merchant IS NOT NULL AND merchant != ''
+        WHERE TRIM(COALESCE(NULLIF(TRIM(merchant), ''), title)) != ''
           AND nature IN ('Spending', 'LoanRepayment', 'Investment', 'Savings')
           AND id NOT IN (SELECT expenseId FROM recurring_expense_cross_ref)
         ORDER BY date ASC

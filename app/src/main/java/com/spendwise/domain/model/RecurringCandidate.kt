@@ -16,7 +16,19 @@ import com.spendwise.domain.model.RecurringSchedule.toLocalDate
  * summed as if they were the same.
  */
 data class RecurringCandidate(
+    /** What to show the user: their own wording, or the statement's. */
     val merchant: String,
+    /**
+     * A stable key for this pattern, separate from the label.
+     *
+     * The two must not be the same string. The label is whatever the most recent
+     * record happened to say, and it moves — a payee written one way in June and
+     * another in July would change identity between scans, and a dismissal
+     * recorded against the old wording would stop matching, so a rejected
+     * suggestion would come back. The identity is derived from what actually
+     * grouped the payments and does not drift.
+     */
+    val identity: String,
     val cadence: RecurringCadence,
     val type: RecurringType,
     val nature: TransactionNature,
@@ -24,7 +36,8 @@ data class RecurringCandidate(
     val currency: Currency,
     val averageAmount: Double,
     val occurrences: List<RecurringOccurrence>,
-    val confidence: Double
+    val confidence: Double,
+    val basis: MatchBasis = MatchBasis.NAME
 ) {
     val occurrenceCount: Int get() = occurrences.size
 
@@ -67,7 +80,7 @@ data class RecurringCandidate(
      * as both a subscription and a one-off refund.
      */
     val signature: String
-        get() = signatureOf(merchant, currency, nature, category)
+        get() = signatureOf(identity, currency, nature)
 
     companion object {
         private val ANCHORED_CADENCES = setOf(
@@ -79,16 +92,21 @@ data class RecurringCandidate(
         /** Always clamped down to the real length of the target month. */
         private const val LAST_POSSIBLE_DAY = 31
 
+        /**
+         * Category is deliberately absent.
+         *
+         * It is a label the user picks and can change at will, not part of what
+         * makes this the same commitment — filing a payment under Utilities one
+         * month and Bills the next does not make it a different bill.
+         */
         fun signatureOf(
-            merchant: String,
+            identity: String,
             currency: Currency,
-            nature: TransactionNature,
-            category: ExpenseCategory
+            nature: TransactionNature
         ): String = listOf(
-            merchant.trim().lowercase(),
+            identity.trim().lowercase(),
             currency.code,
-            nature.name,
-            category.name
+            nature.name
         ).joinToString("|")
     }
 }
@@ -98,3 +116,20 @@ data class RecurringOccurrence(
     val date: Long,
     val amount: Double
 )
+
+/**
+ * What tied these payments together.
+ *
+ * Worth surfacing, because the two deserve different scepticism. A run of
+ * payments to the same payee is self-evidently one commitment. A run of
+ * identical amounts on a schedule under *different* names probably is too — a
+ * loan typed in by hand in July and read off a statement in August — but it
+ * might be a coincidence, and the user is the only one who can tell.
+ */
+enum class MatchBasis {
+    /** Same payee each time. */
+    NAME,
+
+    /** Same amount, same rhythm, names that do not agree. */
+    AMOUNT
+}

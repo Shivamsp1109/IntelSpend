@@ -54,6 +54,18 @@ object RecurringMatcher {
     /** Matching a short name loosely is how two different people become one. */
     private const val MIN_FUZZY_MERCHANT_LENGTH = 6
 
+    /**
+     * How close an amount must be to stand in for a name.
+     *
+     * Effectively exact. This is what lets a commitment the user typed in during
+     * July be settled by the same debit read off a bank statement in August,
+     * where the payee is the lender's registered name, the narration is full of
+     * reference codes, and the category was chosen by a model — nothing agrees
+     * except the sum and the month. Anything looser than to-the-paisa starts
+     * attaching ordinary purchases that happen to cost about the right amount.
+     */
+    private const val EXACT_AMOUNT_TOLERANCE = 0.01
+
     private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
 
     /**
@@ -74,8 +86,15 @@ object RecurringMatcher {
         return entries
             .filter { it.isLive }
             .mapNotNull { entry ->
-                val payments = unlinked
-                    .filter { it.expenseId !in claimed && belongsTo(entry, it) }
+                val available = unlinked.filter { it.expenseId !in claimed }
+
+                // A payment that agrees on the payee is preferred over one that
+                // agrees only on the sum. Taking both together would let a
+                // coincidental purchase of the right size ride along with the
+                // real payment and inflate the commitment's history.
+                val named = available.filter { strengthOf(entry, it) == Strength.NAMED }
+                val payments = named
+                    .ifEmpty { available.filter { strengthOf(entry, it) == Strength.AMOUNT } }
                     .sortedBy { it.date }
 
                 if (payments.isEmpty()) return@mapNotNull null
@@ -99,13 +118,41 @@ object RecurringMatcher {
             }
     }
 
-    private fun belongsTo(entry: RecurringEntry, payment: ExpenseTimeSeriesRow): Boolean {
-        if (entry.currency.code != payment.currency) return false
-        if (entry.nature.name != payment.nature) return false
-        if (!sameMerchant(entry.title, payment.merchant)) return false
-        if (!plausibleAmount(entry, payment.amount)) return false
-        return inExpectedWindow(entry, payment.date)
+    /**
+     * How strongly this payment looks like it settled this commitment.
+     *
+     * Two things are non-negotiable regardless: the currency, and falling inside
+     * the window the schedule predicted. Everything else is evidence that can be
+     * traded off.
+     */
+    private fun strengthOf(entry: RecurringEntry, payment: ExpenseTimeSeriesRow): Strength? {
+        if (entry.currency.code != payment.currency) return null
+        if (!inExpectedWindow(entry, payment.date)) return null
+
+        if (entry.nature.name == payment.nature &&
+            sameMerchant(entry.title, payment.merchant) &&
+            plausibleAmount(entry, payment.amount)
+        ) {
+            return Strength.NAMED
+        }
+
+        // The name and the nature can both be wrong without the payment being
+        // the wrong payment. A commitment entered by hand carries whatever
+        // wording and classification made sense to the user; the same debit read
+        // off a statement carries the bank's. Inside a narrow window, an exact
+        // sum is the more reliable witness of the two.
+        if (isExactAmount(entry.amount, payment.amount)) return Strength.AMOUNT
+
+        return null
     }
+
+    private fun isExactAmount(expected: Double, actual: Double): Boolean {
+        val reference = abs(expected)
+        if (reference == 0.0) return false
+        return abs(actual - expected) / reference <= EXACT_AMOUNT_TOLERANCE
+    }
+
+    private enum class Strength { NAMED, AMOUNT }
 
     private fun sameMerchant(entryTitle: String, merchant: String): Boolean {
         val left = MerchantNormalizer.normalize(entryTitle)

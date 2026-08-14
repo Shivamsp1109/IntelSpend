@@ -4,6 +4,7 @@ import com.spendwise.data.local.DismissedRecurringCandidateEntity
 import com.spendwise.data.local.ExpenseTimeSeriesRow
 import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.MatchBasis
 import com.spendwise.domain.model.RecurringCadence
 import com.spendwise.domain.model.RecurringEntry
 import com.spendwise.domain.model.RecurringType
@@ -446,6 +447,145 @@ class RecurringDetectorTest {
     @Test
     fun `nothing at all produces nothing`() {
         assertTrue(detect(emptyList()).isEmpty())
+    }
+
+    // ── Identity when the labels do not cooperate ─────────────────────────────
+
+    /**
+     * Merchant is optional when adding a transaction by hand, and most people
+     * skip it. The query used to require one, which made every hand-entered
+     * payment invisible to detection — the reason nothing was ever found.
+     */
+    @Test
+    fun `a hand-entered payment with no merchant is still detected`() {
+        val rows = (0 until 5).map { back ->
+            // What the DAO produces for a row with a blank merchant: the title.
+            row("Car EMI", today.minusDays(6).minusMonths(back.toLong()), 18_500.0,
+                nature = TransactionNature.LoanRepayment, category = ExpenseCategory.Other)
+        }
+
+        val found = detect(rows).single()
+
+        assertEquals("Car EMI", found.merchant)
+        assertEquals(RecurringCadence.MONTHLY, found.cadence)
+    }
+
+    /**
+     * Category is a label the user picks and can change. Filing a bill under
+     * Utilities one month and Bills the next does not make it a different bill,
+     * and keying on it split single commitments in two whenever the user and the
+     * model disagreed.
+     */
+    @Test
+    fun `a category that changes between months does not split the commitment`() {
+        val latest = today.minusDays(3)
+        val rows = listOf(
+            row("BESCOM", latest, 1_200.0, category = ExpenseCategory.Utilities),
+            row("BESCOM", latest.minusMonths(1), 1_200.0, category = ExpenseCategory.HomeHousehold),
+            row("BESCOM", latest.minusMonths(2), 1_200.0, category = ExpenseCategory.Utilities),
+            row("BESCOM", latest.minusMonths(3), 1_200.0, category = ExpenseCategory.Other)
+        )
+
+        val found = detect(rows)
+
+        assertEquals(1, found.size)
+        assertEquals(4, found.single().occurrenceCount)
+        // The majority answer, not whichever happened to be most recent.
+        assertEquals(ExpenseCategory.Utilities, found.single().category)
+    }
+
+    /**
+     * The case a hand-entered commitment creates. July is typed in by the user
+     * with their own wording; August and September arrive inside a bank
+     * statement with the lender's registered name and a category the model
+     * chose. Nothing agrees except the amount and the month — which is exactly
+     * what defines the commitment.
+     */
+    @Test
+    fun `the same sum on the same rhythm is found even when every label differs`() {
+        val latest = today.minusDays(4)
+        val rows = listOf(
+            row("Car EMI", latest.minusMonths(2), 18_500.0, category = ExpenseCategory.Other),
+            row("HDFC BANK LTD EMI 8829", latest.minusMonths(1), 18_500.0,
+                nature = TransactionNature.LoanRepayment, category = ExpenseCategory.Other),
+            row("HDFC BANK LTD EMI 8829", latest, 18_500.0,
+                nature = TransactionNature.LoanRepayment, category = ExpenseCategory.Other)
+        )
+
+        val found = detect(rows)
+
+        assertEquals(1, found.size)
+        assertEquals(3, found.single().occurrenceCount)
+        assertEquals(18_500.0, found.single().averageAmount, 0.01)
+        assertEquals(MatchBasis.AMOUNT, found.single().basis)
+    }
+
+    /** Matched on a coincidence of sums, so it must never claim to be certain. */
+    @Test
+    fun `an amount-anchored match is never as confident as a named one`() {
+        val latest = today.minusDays(4)
+        val differing = listOf(
+            row("Car EMI", latest.minusMonths(2), 18_500.0),
+            row("HDFC BANK LTD EMI 8829", latest.minusMonths(1), 18_500.0),
+            row("HDFC BANK LTD EMI 8829", latest, 18_500.0)
+        )
+        val consistent = monthly("Netflix", months = 3, amount = 649.0)
+
+        val byAmount = detect(differing).single()
+        val byName = detect(consistent).single()
+
+        assertEquals(MatchBasis.NAME, byName.basis)
+        assertTrue(
+            "amount ${byAmount.confidence} vs name ${byName.confidence}",
+            byAmount.confidence < byName.confidence
+        )
+        assertTrue(byAmount.confidence <= 0.65)
+    }
+
+    /**
+     * The guard that makes amount-anchoring safe. Two unrelated subscriptions of
+     * the same price would land in one group, but between them they bill twice a
+     * month and fit no cadence at all — so the pair is rejected rather than
+     * merged into one commitment that never existed.
+     */
+    @Test
+    fun `two different commitments of equal value do not merge`() {
+        val latest = today.minusDays(3)
+        val rows = (0 until 4).flatMap { back ->
+            listOf(
+                row("Alpha Club", latest.minusMonths(back.toLong()), 500.0),
+                row("Beta Digest", latest.minusDays(15).minusMonths(back.toLong()), 500.0)
+            )
+        }
+
+        val found = detect(rows)
+
+        // Each stands on its own name; nothing is left over to be pooled by
+        // amount, and no combined ₹1,000-a-month commitment is invented.
+        assertEquals(2, found.size)
+        assertTrue(found.all { it.basis == MatchBasis.NAME })
+        assertTrue(found.all { it.occurrenceCount == 4 })
+    }
+
+    /** Approximate sums are ordinary shopping; only an exact repeat is evidence. */
+    @Test
+    fun `amounts that are merely similar are not pooled`() {
+        val latest = today.minusDays(3)
+        val rows = listOf(
+            row("Shop One", latest.minusMonths(2), 500.0),
+            row("Shop Two", latest.minusMonths(1), 505.0),
+            row("Shop Three", latest, 495.0)
+        )
+
+        assertTrue(detect(rows).isEmpty())
+    }
+
+    /** A commitment found by name should never also be offered again by amount. */
+    @Test
+    fun `a commitment is never offered twice`() {
+        val found = detect(monthly("Netflix", months = 6, amount = 649.0))
+
+        assertEquals(1, found.size)
     }
 
     @Test

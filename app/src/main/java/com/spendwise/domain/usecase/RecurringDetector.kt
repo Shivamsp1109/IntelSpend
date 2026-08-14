@@ -6,6 +6,7 @@ import com.spendwise.data.local.DismissedRecurringCandidateEntity
 import com.spendwise.data.local.ExpenseTimeSeriesRow
 import com.spendwise.domain.model.Currency
 import com.spendwise.domain.model.ExpenseCategory
+import com.spendwise.domain.model.MatchBasis
 import com.spendwise.domain.model.RecurringCadence
 import com.spendwise.domain.model.RecurringCandidate
 import com.spendwise.domain.model.RecurringEntry
@@ -15,6 +16,7 @@ import com.spendwise.domain.model.RecurringType
 import com.spendwise.domain.model.TransactionNature
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 import kotlin.math.sqrt
 
 /**
@@ -24,6 +26,12 @@ import kotlin.math.sqrt
  * arithmetic over dates and amounts, not a judgement call, so there is nothing
  * here for a model to do that rules do not do better — and rules can be
  * explained to the user, cost nothing per import, and send no data anywhere.
+ *
+ * Two passes, because the same commitment is not always written down the same
+ * way. The first groups by payee, which is how most repetition presents itself.
+ * The second catches what the first cannot: the same sum leaving on the same
+ * rhythm under names that never agree, which is what a loan looks like when it
+ * is typed in by hand one month and read off a bank statement the next.
  *
  * Kept as a pure function over lists so it can be tested against fixtures
  * without a database, a clock or a coroutine.
@@ -91,6 +99,16 @@ object RecurringDetector {
      */
     private const val DISMISSAL_AMOUNT_TOLERANCE = 0.25
 
+    /**
+     * The most an amount-anchored detection is ever allowed to claim.
+     *
+     * These are held to a lower ceiling than a named match on purpose: identical
+     * sums on a schedule are strong evidence but not proof, and the user is the
+     * only one who can say whether two differently-named payments are the same
+     * commitment.
+     */
+    private const val AMOUNT_ANCHORED_CEILING = 0.65
+
     fun detect(
         rows: List<ExpenseTimeSeriesRow>,
         existing: List<RecurringEntry>,
@@ -99,42 +117,60 @@ object RecurringDetector {
     ): List<RecurringCandidate> {
         if (rows.isEmpty()) return emptyList()
 
-        return buildClusters(rows)
-            .mapNotNull { cluster -> cluster.toCandidate(now) }
+        val named = buildNameClusters(rows)
+        val fromNames = named.mapNotNull { it.toCandidate(now, MatchBasis.NAME) }
+
+        // Only what the first pass could not account for, so a commitment is
+        // never offered twice under two different descriptions.
+        val claimed = named
+            .filter { cluster -> fromNames.any { it.identity == cluster.identity } }
+            .flatMap { it.rows }
+            .map { it.expenseId }
+            .toSet()
+
+        val fromAmounts = buildAmountClusters(rows.filterNot { it.expenseId in claimed })
+            .mapNotNull { it.toCandidate(now, MatchBasis.AMOUNT) }
+
+        return (fromNames + fromAmounts)
             .filterNot { candidate -> isAlreadyTracked(candidate, existing) }
             .filterNot { candidate -> isStillDismissed(candidate, dismissed) }
             .sortedByDescending { it.confidence }
     }
 
-    // ── Clustering ────────────────────────────────────────────────────────────
+    // ── Clustering by payee ───────────────────────────────────────────────────
 
     /**
-     * Groups payments into things that might each be one commitment.
+     * Groups payments by who they went to.
      *
-     * The key is merchant *and* currency *and* nature *and* category, never
-     * merchant alone. A shop can appear as both a purchase and a refund, and a
-     * rupee series averaged together with a dollar one produces a number that is
-     * neither.
+     * The key is payee *and* currency *and* nature, never payee alone. A rupee
+     * series averaged together with a dollar one produces a number that is
+     * neither, and a shop can appear as both a purchase and a refund.
+     *
+     * Category is deliberately not part of it. It is a label the user picks and
+     * can change at will: filing a bill under Utilities one month and Bills the
+     * next does not make it a different bill, and keying on it split single
+     * commitments in two whenever the model and the user disagreed.
      */
-    private fun buildClusters(rows: List<ExpenseTimeSeriesRow>): List<Cluster> {
+    private fun buildNameClusters(rows: List<ExpenseTimeSeriesRow>): List<Cluster> {
         val exact = rows
             .filter { it.merchant.isNotBlank() }
             .groupBy { row ->
                 ClusterKey(
                     merchant = MerchantNormalizer.normalize(row.merchant),
                     currency = row.currency,
-                    nature = row.nature,
-                    category = row.category
+                    nature = row.nature
                 )
             }
-            .map { (key, grouped) -> Cluster(key, dedupeRetries(grouped)) }
+            .map { (key, grouped) -> Cluster(identity = key.merchant, rows = grouped.toMutableList()) }
 
         // Fuzzy merging is only offered to groups that cannot stand up on their
         // own. Two groups that each already look like a commitment are left
         // alone: merging them would be combining two recognised payees on a
         // similarity score, and the cost of being wrong there is higher than the
         // cost of showing both.
-        val (strong, weak) = exact.partition { it.occurrences.size >= RecurringCadence.MONTHLY.minimumOccurrences() }
+        val (strong, weak) = exact.partition {
+            it.rows.size >= RecurringCadence.MONTHLY.minimumOccurrences()
+        }
 
         val leftovers = mutableListOf<Cluster>()
         for (fragment in weak) {
@@ -145,8 +181,49 @@ object RecurringDetector {
         return strong + leftovers
     }
 
+    // ── Clustering by amount ──────────────────────────────────────────────────
+
+    /**
+     * Groups leftover payments by the exact sum that left the account.
+     *
+     * This is the case a hand-entered commitment creates. Someone records an EMI
+     * in July with whatever title and category makes sense to them, and in
+     * August the same debit arrives inside a bank statement with the lender's
+     * registered name, a narration full of reference codes, and a category the
+     * model chose. Nothing about the two records agrees except the two things
+     * that actually define the commitment: the amount, and the month.
+     *
+     * The amount must match to the paisa. Anything looser starts collecting
+     * unrelated purchases that happen to cost about the same, and the whole
+     * value of this pass is that identical sums arriving on a schedule are hard
+     * to produce by chance.
+     *
+     * The cadence fit is what makes it safe. Two different ₹500 subscriptions
+     * both billing monthly would land here together, but their combined series
+     * has two payments a month and fits no cadence at all, so it is rejected
+     * rather than merged into one wrong commitment.
+     */
+    private fun buildAmountClusters(rows: List<ExpenseTimeSeriesRow>): List<Cluster> =
+        rows
+            .filter { it.merchant.isNotBlank() }
+            .groupBy { row -> AmountKey(row.currency, (row.amount * 100).roundToLong()) }
+            .values
+            .filter { it.size >= RecurringCadence.MONTHLY.minimumOccurrences() }
+            .map { grouped ->
+                val first = grouped.first()
+                Cluster(
+                    // The sum itself, because the names are precisely what does
+                    // not agree here. A label-derived identity would move every
+                    // time a new statement worded the payee differently, and a
+                    // dismissal recorded against the old wording would stop
+                    // matching — so a rejected suggestion would reappear.
+                    identity = "amount:${first.currency}:${(first.amount * 100).roundToLong()}",
+                    rows = grouped.toMutableList()
+                )
+            }
+
     /** Collapses a failed-and-retried charge into the single payment it was. */
-    private fun dedupeRetries(rows: List<ExpenseTimeSeriesRow>): MutableList<RecurringOccurrence> {
+    private fun dedupeRetries(rows: List<ExpenseTimeSeriesRow>): List<RecurringOccurrence> {
         val sorted = rows.sortedBy { it.date }
         val kept = mutableListOf<RecurringOccurrence>()
 
@@ -170,7 +247,8 @@ object RecurringDetector {
 
     // ── Cadence fitting ───────────────────────────────────────────────────────
 
-    private fun Cluster.toCandidate(now: Long): RecurringCandidate? {
+    private fun Cluster.toCandidate(now: Long, basis: MatchBasis): RecurringCandidate? {
+        val occurrences = dedupeRetries(rows)
         val dates = occurrences.map { it.date }.sorted()
         if (dates.size < 2) return null
 
@@ -188,18 +266,37 @@ object RecurringDetector {
             .maxByOrNull { it.regularity - it.skips * 0.1 }
             ?: return null
 
+        val ceiling = when (basis) {
+            MatchBasis.AMOUNT -> minOf(AMOUNT_ANCHORED_CEILING, fit.cadence.confidenceCeiling(dates.size))
+            MatchBasis.NAME -> fit.cadence.confidenceCeiling(dates.size)
+        }
+
         return RecurringCandidate(
-            merchant = key.merchant,
+            // The most recent wording, so the user sees the acronyms and
+            // capitalisation they typed rather than a title-cased rewrite of it.
+            merchant = rows.maxBy { it.date }.merchant,
+            identity = identity,
             cadence = fit.cadence,
             type = if (variation <= FIXED_AMOUNT_VARIATION) RecurringType.FIXED else RecurringType.VARIABLE,
-            nature = TransactionNature.fromName(key.nature),
-            category = ExpenseCategory.fromLabel(key.category),
-            currency = Currency.fromCode(key.currency),
+            nature = dominant { it.nature }.let(TransactionNature::fromName),
+            category = dominant { it.category }.let(ExpenseCategory::fromLabel),
+            currency = Currency.fromCode(rows.first().currency),
             averageAmount = mean,
             occurrences = occurrences.sortedBy { it.date },
-            confidence = confidenceFor(fit, variation, dates.size)
+            confidence = confidenceFor(fit, variation, dates.size, ceiling),
+            basis = basis
         )
     }
+
+    /**
+     * The value most of these payments carry.
+     *
+     * Needed because nature and category are no longer part of the cluster key,
+     * so one cluster can hold several. The majority is the honest answer: three
+     * months filed as a loan repayment and one misfiled as spending is a loan.
+     */
+    private fun Cluster.dominant(select: (ExpenseTimeSeriesRow) -> String): String =
+        rows.groupingBy(select).eachCount().maxBy { it.value }.key
 
     /**
      * Checks whether every gap in the series is a whole number of this cadence's
@@ -252,12 +349,17 @@ object RecurringDetector {
      * How much the app is willing to claim for a detection.
      *
      * Three things move it: how evenly spaced the payments are, how alike the
-     * amounts are, and how many there are. The caps matter more than the formula
-     * — two annual premiums two years apart can look immaculate and still be a
-     * coincidence, and the score has to say so rather than reporting near
+     * amounts are, and how many there are. The ceilings matter more than the
+     * formula — two annual premiums two years apart can look immaculate and still
+     * be a coincidence, and the score has to say so rather than reporting near
      * certainty from two data points.
      */
-    private fun confidenceFor(fit: CadenceFit, variation: Double, occurrences: Int): Double {
+    private fun confidenceFor(
+        fit: CadenceFit,
+        variation: Double,
+        occurrences: Int,
+        ceiling: Double
+    ): Double {
         val amountConsistency = (1.0 - variation.coerceIn(0.0, 1.0))
         val extra = occurrences - fit.cadence.minimumOccurrences()
         val volume = (0.5 + 0.25 * extra).coerceIn(0.0, 1.0)
@@ -265,7 +367,7 @@ object RecurringDetector {
         val base = 0.45 * fit.regularity + 0.30 * amountConsistency + 0.25 * volume
         val penalised = base - 0.05 * fit.skips
 
-        return penalised.coerceIn(0.0, fit.cadence.confidenceCeiling(occurrences))
+        return penalised.coerceIn(0.0, ceiling)
     }
 
     // ── Exclusions ────────────────────────────────────────────────────────────
@@ -274,7 +376,6 @@ object RecurringDetector {
         existing.any { entry ->
             entry.currency == candidate.currency &&
                 entry.nature == candidate.nature &&
-                entry.category == candidate.category &&
                 (entry.title.equals(candidate.merchant, ignoreCase = true) ||
                     MerchantSimilarity.sameMerchant(entry.title, candidate.merchant))
         }
@@ -311,25 +412,26 @@ object RecurringDetector {
     private data class ClusterKey(
         val merchant: String,
         val currency: String,
-        val nature: String,
-        val category: String
+        val nature: String
     )
 
+    /** Currency plus the exact sum in the smallest unit, so no rounding creeps in. */
+    private data class AmountKey(val currency: String, val paise: Long)
+
     private class Cluster(
-        val key: ClusterKey,
-        val occurrences: MutableList<RecurringOccurrence>
+        val identity: String,
+        val rows: MutableList<ExpenseTimeSeriesRow>
     ) {
         fun canAbsorb(other: Cluster): Boolean =
-            key.currency == other.key.currency &&
-                key.nature == other.key.nature &&
-                key.category == other.key.category &&
-                identifyingLength(key.merchant) >= MIN_FUZZY_MERCHANT_LENGTH &&
-                identifyingLength(other.key.merchant) >= MIN_FUZZY_MERCHANT_LENGTH &&
-                MerchantSimilarity.sameMerchant(key.merchant, other.key.merchant)
+            rows.first().currency == other.rows.first().currency &&
+                rows.first().nature == other.rows.first().nature &&
+                identifyingLength(identity) >= MIN_FUZZY_MERCHANT_LENGTH &&
+                identifyingLength(other.identity) >= MIN_FUZZY_MERCHANT_LENGTH &&
+                MerchantSimilarity.sameMerchant(identity, other.identity)
 
         fun absorb(other: Cluster) {
-            occurrences += other.occurrences
-            occurrences.sortBy { it.date }
+            rows += other.rows
+            rows.sortBy { it.date }
         }
     }
 
