@@ -39,12 +39,49 @@ class NotificationScheduler @Inject constructor(
             ExistingPeriodicWorkPolicy.UPDATE,
             syncRequest
         )
+
+        scheduleRecurringWork()
     }
 
-    private fun initialDelayUntilEvening(): Long {
+    /**
+     * The two recurring-payment jobs.
+     *
+     * Neither needs the network: detection reads local history, and the reminder
+     * reconciles against rows already on the device. Requiring a connection would
+     * mean someone offline stops being told about their rent.
+     */
+    fun scheduleRecurringWork() {
+        // Morning, so a payment due in three days is mentioned at a point in the
+        // day when something can still be done about it.
+        val dueReminders = PeriodicWorkRequestBuilder<RecurringDueReminderWorker>(1, TimeUnit.DAYS)
+            .setInitialDelay(initialDelayUntilHour(9), TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "spendwise_recurring_due_reminder",
+            ExistingPeriodicWorkPolicy.UPDATE,
+            dueReminders
+        )
+
+        // Weekly: a pattern that took months to form does not become newsworthy
+        // overnight, and a daily "we found something" is how a useful suggestion
+        // turns into noise the user mutes.
+        val detection = PeriodicWorkRequestBuilder<RecurringDetectionWorker>(7, TimeUnit.DAYS)
+            .setInitialDelay(initialDelayUntilHour(11), TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "spendwise_recurring_detection",
+            ExistingPeriodicWorkPolicy.UPDATE,
+            detection
+        )
+    }
+
+    private fun initialDelayUntilEvening(): Long = initialDelayUntilHour(19)
+
+    /** Milliseconds until the next occurrence of [hour] o'clock, local time. */
+    private fun initialDelayUntilHour(hour: Int): Long {
         val now = Calendar.getInstance()
         val target = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 19)
+            set(Calendar.HOUR_OF_DAY, hour)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
