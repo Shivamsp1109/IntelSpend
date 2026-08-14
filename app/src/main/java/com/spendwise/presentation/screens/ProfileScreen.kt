@@ -2,6 +2,8 @@ package com.spendwise.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,12 +76,19 @@ fun ProfileScreen(
         onTransactions = onTransactions,
         onAdd = onAddExpense,
         onAnalytics = onAnalytics,
-        onProfile = {}
+        onProfile = {},
+        // This screen is settings and account, not capture. A button for adding
+        // a transaction floats over the list here for no reason and covers the
+        // last row of it.
+        showAddButton = false
     ) { screenModifier ->
         Column(
             modifier = screenModifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
+                // The list has outgrown the screen — Logout and the last entries
+                // were unreachable on shorter handsets.
+                .verticalScroll(rememberScrollState())
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
