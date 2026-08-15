@@ -97,6 +97,23 @@ const REQUIRED_TABLES = [
         FOREIGN KEY (uid) REFERENCES users(uid)
         ON DELETE CASCADE
   );`
+  },
+  {
+    table: 'category_budgets',
+    definition: `CREATE TABLE IF NOT EXISTS category_budgets (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    uid           VARCHAR(128) NOT NULL,
+    local_id      INT NOT NULL,
+    category      VARCHAR(100) NOT NULL,
+    monthly_limit DOUBLE NOT NULL,
+    currency      VARCHAR(10) NOT NULL DEFAULT 'INR',
+    updated_at    BIGINT NOT NULL DEFAULT 0,
+    UNIQUE KEY unique_user_category_budget (uid, local_id),
+    UNIQUE KEY unique_user_category (uid, category, currency),
+    CONSTRAINT fk_category_budgets_user
+        FOREIGN KEY (uid) REFERENCES users(uid)
+        ON DELETE CASCADE
+  );`
   }
 ];
 

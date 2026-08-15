@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.spendwise.data.local.CategoryBudgetDao
+import com.spendwise.data.remote.MySqlBudgetDataSource
 import com.spendwise.domain.repository.ExpenseRepository
 import com.spendwise.domain.repository.GoalRepository
 import com.spendwise.domain.repository.IncomeRepository
@@ -35,7 +37,9 @@ class SyncWorker @AssistedInject constructor(
     private val incomeRepository: IncomeRepository,
     private val goalRepository: GoalRepository,
     private val recurringRepository: RecurringEntryRepository,
-    private val reconcileRecurringPayments: ReconcileRecurringPaymentsUseCase
+    private val reconcileRecurringPayments: ReconcileRecurringPaymentsUseCase,
+    private val budgetDao: CategoryBudgetDao,
+    private val budgetDataSource: MySqlBudgetDataSource
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -60,11 +64,25 @@ class SyncWorker @AssistedInject constructor(
         runCatching { recurringRepository.syncPendingRecurring() }
             .onFailure { Log.w(TAG, "Recurring sync failed.", it); anyFailure = true }
 
+        runCatching { syncPendingBudgets() }
+            .onFailure { Log.w(TAG, "Budget sync failed.", it); anyFailure = true }
+
         return if (anyFailure) {
             Log.w(TAG, "One or more entity syncs failed; scheduling retry.")
             Result.retry()
         } else {
             Result.success()
+        }
+    }
+
+    /**
+     * Budgets have no repository of their own — there is no business logic to
+     * put in one, only a table and a push — so the sweep does it directly.
+     */
+    private suspend fun syncPendingBudgets() {
+        for (budget in budgetDao.getPendingSync()) {
+            budgetDataSource.upsertBudget(budget)
+            budgetDao.updateBudget(budget.copy(isSynced = true))
         }
     }
 

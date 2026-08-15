@@ -29,6 +29,16 @@ object RecurringNotifications {
     const val DUE_CHANNEL_ID = "recurring_due_reminder"
     const val DETECTION_CHANNEL_ID = "recurring_detection"
 
+    /**
+     * Budget warnings get their own channel too.
+     *
+     * Someone may well want to be told a bill is due and not want to be told
+     * they are near a limit they set themselves — one is an obligation, the
+     * other is a choice — and a shared channel would force them to accept both
+     * or neither.
+     */
+    const val BUDGET_CHANNEL_ID = "budget_alerts"
+
     /** Fixed ids so a fresh notification replaces the last rather than stacking. */
     const val DUE_NOTIFICATION_ID = 2001
     const val DETECTION_NOTIFICATION_ID = 2002
@@ -52,6 +62,13 @@ object RecurringNotifications {
                 // whenever, not something that needs their attention now.
                 NotificationManager.IMPORTANCE_LOW
             ).apply { description = "When the app spots a repeating payment in your history" }
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                BUDGET_CHANNEL_ID,
+                "Budget warnings",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "When a category budget is nearly or fully spent" }
         )
     }
 

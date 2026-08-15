@@ -73,6 +73,17 @@ class NotificationScheduler @Inject constructor(
             ExistingPeriodicWorkPolicy.UPDATE,
             detection
         )
+
+        // Evening, when the day's spending has mostly happened. A budget warning
+        // at breakfast is based on yesterday's figures.
+        val budgets = PeriodicWorkRequestBuilder<BudgetAlertWorker>(1, TimeUnit.DAYS)
+            .setInitialDelay(initialDelayUntilHour(20), TimeUnit.MILLISECONDS)
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "spendwise_budget_alerts",
+            ExistingPeriodicWorkPolicy.UPDATE,
+            budgets
+        )
     }
 
     private fun initialDelayUntilEvening(): Long = initialDelayUntilHour(19)

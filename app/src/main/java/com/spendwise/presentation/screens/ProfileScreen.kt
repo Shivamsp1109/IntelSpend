@@ -64,6 +64,7 @@ fun ProfileScreen(
     onAnalytics: () -> Unit,
     onFixCategories: () -> Unit = {},
     onRecurringPayments: () -> Unit = {},
+    onBudgets: () -> Unit = {},
     onLogout: () -> Unit,
     smartExtractionViewModel: SmartExtractionViewModel = hiltViewModel()
 ) {
@@ -158,7 +159,11 @@ fun ProfileScreen(
                 "Recurring Payments",
                 onClick = onRecurringPayments
             )
-            ProfileItem(Icons.Default.AccountBalanceWallet, "Budget")
+            ProfileItem(
+                Icons.Default.AccountBalanceWallet,
+                "Budgets",
+                onClick = onBudgets
+            )
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")
             ProfileItem(Icons.Default.Settings, "Settings")
             ProfileItem(Icons.Default.Help, "Help & Support")

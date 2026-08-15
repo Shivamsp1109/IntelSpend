@@ -5,8 +5,10 @@ import com.spendwise.data.local.ExpenseDao
 import com.spendwise.data.local.ExpenseEntity
 import com.spendwise.data.local.IncomeDao
 import com.spendwise.data.local.IncomeEntity
+import com.spendwise.data.local.CategoryBudgetDao
 import com.spendwise.data.local.RecurringEntryDao
 import com.spendwise.data.local.RecurringExpenseCrossRef
+import com.spendwise.data.remote.MySqlBudgetDataSource
 import com.spendwise.data.remote.ExpenseSyncPayload
 import com.spendwise.data.remote.IncomeSyncPayload
 import com.spendwise.data.remote.MySqlExpenseDataSource
@@ -43,7 +45,9 @@ class RestoreFromServerUseCase @Inject constructor(
     private val expenseDataSource: MySqlExpenseDataSource,
     private val incomeDataSource: MySqlIncomeDataSource,
     private val recurringEntryDao: RecurringEntryDao,
-    private val recurringDataSource: MySqlRecurringDataSource
+    private val recurringDataSource: MySqlRecurringDataSource,
+    private val budgetDao: CategoryBudgetDao,
+    private val budgetDataSource: MySqlBudgetDataSource
 ) {
     suspend operator fun invoke(): RestoreOutcome {
         if (expenseDao.countExpenses() > 0 || incomeDao.countIncomes() > 0) {
@@ -112,6 +116,11 @@ class RestoreFromServerUseCase @Inject constructor(
         for (dismissal in dismissals) {
             runCatching { recurringEntryDao.insertDismissedCandidate(dismissal) }
                 .onFailure { Log.w(TAG, "Could not restore a dismissal.", it) }
+        }
+
+        for (budget in budgetDataSource.fetchAllBudgets()) {
+            runCatching { budgetDao.insertBudget(budget.toRestoredEntity()) }
+                .onFailure { Log.w(TAG, "Could not restore a budget.", it) }
         }
 
         entries.size

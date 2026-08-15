@@ -169,6 +169,31 @@ CREATE TABLE IF NOT EXISTS recurring_expense_cross_ref (
         ON DELETE CASCADE
 );
 
+-- Standing monthly limits per category.
+--
+-- Named category_budgets rather than budgets because the app already has a
+-- different notion of a budget — the home screen compares a whole month's
+-- spending against income. That answers "am I living within my means"; this
+-- answers "am I spending more on eating out than I meant to".
+--
+-- The alert columns are deliberately not synced back down on restore: whether a
+-- notification has been shown is a fact about a handset, not the account.
+CREATE TABLE IF NOT EXISTS category_budgets (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    uid           VARCHAR(128) NOT NULL,
+    local_id      INT NOT NULL,
+    category      VARCHAR(100) NOT NULL,
+    monthly_limit DOUBLE NOT NULL,
+    currency      VARCHAR(10) NOT NULL DEFAULT 'INR',
+    updated_at    BIGINT NOT NULL DEFAULT 0,
+    UNIQUE KEY unique_user_category_budget (uid, local_id),
+    -- One limit per category per currency, matching the app's own constraint.
+    UNIQUE KEY unique_user_category (uid, category, currency),
+    CONSTRAINT fk_category_budgets_user
+        FOREIGN KEY (uid) REFERENCES users(uid)
+        ON DELETE CASCADE
+);
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- LLM extraction usage log.
 --

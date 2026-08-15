@@ -352,3 +352,45 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_recurring_status` ON `recurring` (`status`)")
     }
 }
+
+/**
+ * Room migration from schema version 11 → 12.
+ *
+ * Adds standing monthly limits per category.
+ *
+ * Named `category_budgets` rather than `budgets` because the app already has a
+ * different notion of a budget — the home screen compares a whole month's
+ * spending against income. That answers "am I living within my means"; this
+ * answers "am I spending more on eating out than I meant to", and the two should
+ * not be confusable at a glance in a schema.
+ *
+ * A limit belongs to a category *and* a currency, hence the unique index across
+ * both: without it a rupee budget could be measured against dollar spending, and
+ * two limits for the same category could coexist with no rule for which wins.
+ *
+ * The alert columns record the highest percentage already announced and the
+ * month it belongs to. Both are needed rather than a timestamp, because the
+ * reset is a calendar question — a budget starts afresh on the 1st however few
+ * days have passed since the last alert.
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `category_budgets` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `category` TEXT NOT NULL,
+                `monthlyLimit` REAL NOT NULL,
+                `currency` TEXT NOT NULL,
+                `lastAlertedThreshold` INTEGER NOT NULL,
+                `lastAlertedMonth` TEXT,
+                `isSynced` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_category_budgets_category_currency` " +
+                "ON `category_budgets` (`category`, `currency`)"
+        )
+    }
+}

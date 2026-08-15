@@ -2,6 +2,7 @@ package com.spendwise.di
 
 import com.spendwise.BuildConfig
 import com.spendwise.data.remote.ExtractionApi
+import com.spendwise.data.remote.MySqlBudgetApi
 import com.spendwise.data.remote.MySqlExpenseApi
 import com.spendwise.data.remote.MySqlGoalApi
 import com.spendwise.data.remote.MySqlIncomeApi
@@ -164,6 +165,11 @@ object MySqlModule {
     @Singleton
     fun provideMySqlRecurringApi(retrofit: Retrofit): MySqlRecurringApi =
         retrofit.create(MySqlRecurringApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMySqlBudgetApi(retrofit: Retrofit): MySqlBudgetApi =
+        retrofit.create(MySqlBudgetApi::class.java)
 
     /**
      * Built on its own Retrofit so it picks up the longer-timeout client. Same
