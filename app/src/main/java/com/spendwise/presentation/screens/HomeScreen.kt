@@ -56,6 +56,7 @@ import com.spendwise.presentation.components.SpendWiseOrange
 import com.spendwise.presentation.components.SpendWisePurple
 import com.spendwise.presentation.components.SpendWiseScreen
 import com.spendwise.presentation.components.SpendWiseSoftPurple
+import com.spendwise.presentation.components.SpendWiseTextPrimary
 import com.spendwise.presentation.components.SpendWiseTextMuted
 import com.spendwise.presentation.viewmodel.HomeViewModel
 import com.spendwise.util.CurrencyFormatter
@@ -255,7 +256,14 @@ fun HomeScreen(
                         elevation = CardDefaults.cardElevation(0.dp)
                     ) {
                         Column(Modifier.padding(14.dp)) {
-                            Text(insight.title, style = MaterialTheme.typography.titleMedium)
+                            // Stated explicitly: the card is white, and without a
+                            // colour the title inherits one meant for the tinted
+                            // background behind it, leaving it barely readable.
+                            Text(
+                                insight.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = SpendWiseTextPrimary
+                            )
                             Text(insight.description, color = SpendWiseTextMuted, style = MaterialTheme.typography.bodyMedium)
                         }
                     }

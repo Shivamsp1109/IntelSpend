@@ -56,6 +56,7 @@ import com.spendwise.presentation.components.ExpenseRow
 import com.spendwise.presentation.components.HeaderRow
 import com.spendwise.presentation.components.SpendWisePurple
 import com.spendwise.presentation.components.SpendWiseScreen
+import com.spendwise.presentation.components.SpendWiseTextPrimary
 import com.spendwise.presentation.components.SpendWiseTextMuted
 import com.spendwise.presentation.viewmodel.ExpenseListViewModel
 import java.io.File
@@ -261,7 +262,13 @@ private fun searchFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color.Transparent,
     unfocusedBorderColor = Color.Transparent,
     focusedContainerColor = Color.White,
-    unfocusedContainerColor = Color.White
+    unfocusedContainerColor = Color.White,
+    // The container is white but the text colour was left to the theme, which
+    // picks one for the screen's tinted background — so what the user typed came
+    // out pale grey on white and was hard to read back.
+    focusedTextColor = SpendWiseTextPrimary,
+    unfocusedTextColor = SpendWiseTextPrimary,
+    cursorColor = SpendWisePurple
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

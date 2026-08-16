@@ -43,14 +43,32 @@ class SyncWorker @AssistedInject constructor(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        var anyFailure = false
-
         // Before the uploads, so anything it changes goes out in this same sweep
         // rather than waiting for the next one. Local-only work, so a failure
         // here does not warrant retrying the network syncs — a due date that is
         // one pass stale is a far smaller problem than a sync loop.
         runCatching { reconcileRecurringPayments() }
             .onFailure { Log.w(TAG, "Reconciling recurring payments failed.", it) }
+
+        // Swept more than once on purpose. Requests to sync are coalesced while
+        // one is already running, so a row saved during the first pass would
+        // otherwise wait for the six-hourly job — which, when someone is adding
+        // a batch of expenses, is most of them. The second pass finds whatever
+        // arrived during the first and is a cheap no-op when nothing did.
+        var anyFailure = false
+        repeat(SWEEPS) { anyFailure = sweep() || anyFailure }
+
+        return if (anyFailure) {
+            Log.w(TAG, "One or more entity syncs failed; scheduling retry.")
+            Result.retry()
+        } else {
+            Result.success()
+        }
+    }
+
+    /** Returns true if anything failed; each entity is independent of the rest. */
+    private suspend fun sweep(): Boolean {
+        var anyFailure = false
 
         runCatching { expenseRepository.syncPendingExpenses() }
             .onFailure { Log.w(TAG, "Expense sync failed.", it); anyFailure = true }
@@ -67,12 +85,7 @@ class SyncWorker @AssistedInject constructor(
         runCatching { syncPendingBudgets() }
             .onFailure { Log.w(TAG, "Budget sync failed.", it); anyFailure = true }
 
-        return if (anyFailure) {
-            Log.w(TAG, "One or more entity syncs failed; scheduling retry.")
-            Result.retry()
-        } else {
-            Result.success()
-        }
+        return anyFailure
     }
 
     /**
@@ -88,5 +101,8 @@ class SyncWorker @AssistedInject constructor(
 
     private companion object {
         const val TAG = "SyncWorker"
+
+        /** One pass to upload, one to catch what arrived while it was uploading. */
+        const val SWEEPS = 2
     }
 }

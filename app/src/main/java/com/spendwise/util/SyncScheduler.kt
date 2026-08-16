@@ -20,6 +20,6 @@ class SyncScheduler @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     fun enqueueImmediateSync() {
-        enqueueExpeditedOneShot<SyncWorker>(context, "spendwise_immediate_sync")
+        enqueueSyncOneShot<SyncWorker>(context, "spendwise_immediate_sync")
     }
 }

@@ -323,19 +323,29 @@ fun CategoryBreakdownList(
                             .background(category.chartColor, CircleShape)
                     )
                     Spacer(Modifier.width(10.dp))
-                    Text(
-                        category.label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    Text(
-                        "  ${(share * 100).toInt()}%",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = SpendWiseTextMuted
-                    )
-                    Spacer(Modifier.weight(1f))
+                    // One weight for the whole left-hand side, and none for the
+                    // figure. Two competing weights — a non-filling one on the
+                    // label plus a spacer — split the slack between them, so the
+                    // amount landed wherever the category name happened to end
+                    // and no two rows agreed on where the right edge was.
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            category.label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Text(
+                            "  ${(share * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SpendWiseTextMuted
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
                     Column(horizontalAlignment = Alignment.End) {
                         Amount(CurrencyFormatter.format(amount, currency))
                         DeltaLabel(changes[category], currency)

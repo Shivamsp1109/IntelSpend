@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -28,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendwise.data.ingestion.model.DuplicateConfidence
 import com.spendwise.data.ingestion.model.RawTransaction
 import com.spendwise.util.DateUtils
+import com.spendwise.util.CurrencyFormatter
 import com.spendwise.util.PickerDates
 import java.time.LocalDate
 import java.time.ZoneId
@@ -237,7 +240,15 @@ fun ReviewContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(tx.merchant ?: tx.title, style = MaterialTheme.typography.bodyLarge)
+                        // Bounded: a bank narration can run to eighty characters
+                        // of reference codes, and left to wrap it pushed the row
+                        // several lines tall and squeezed the amount beside it.
+                        Text(
+                            tx.merchant ?: tx.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CategoryBadge(
@@ -322,11 +333,23 @@ fun ReviewContent(
                             )
                         }
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    // Formatted rather than interpolated. A raw Double prints as
+                    // "1234.5" — no grouping, no second decimal — which is what
+                    // made this list look unfinished next to every other screen.
+                    // Kept on one line so it holds the right edge instead of
+                    // wrapping into the description beside it.
                     Text(
-                        text = if (tx.type == TransactionType.DEBIT) "-${tx.currency.symbol}${tx.amount}" else "+${tx.currency.symbol}${tx.amount}",
+                        text = buildString {
+                            append(if (tx.type == TransactionType.DEBIT) "-" else "+")
+                            append(CurrencyFormatter.format(tx.amount, tx.currency))
+                        },
                         color = if (tx.type == TransactionType.DEBIT) MaterialTheme.colorScheme.error else Color(0xFF4CAF50),
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.End,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
                 HorizontalDivider()

@@ -39,6 +39,16 @@ val SpendWiseGreen = Color(0xFF00B875)
 val SpendWiseOrange = Color(0xFFFF8A00)
 val SpendWiseTextMuted = Color(0xFF7C748A)
 
+/**
+ * Body text on a white surface.
+ *
+ * Named rather than left to the theme because several cards and fields in this
+ * app are explicitly white while the screen behind them is tinted: the theme's
+ * default content colour is chosen for the background, and inheriting it there
+ * leaves titles and typed text nearly invisible.
+ */
+val SpendWiseTextPrimary = Color(0xFF17102A)
+
 val PurpleGradient = Brush.verticalGradient(
     colors = listOf(Color(0xFF9600FF), Color(0xFF5F00D8))
 )

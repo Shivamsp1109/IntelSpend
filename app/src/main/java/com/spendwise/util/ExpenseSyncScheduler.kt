@@ -10,6 +10,6 @@ class ExpenseSyncScheduler @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     fun enqueueImmediateSync() {
-        enqueueExpeditedOneShot<ExpenseSyncWorker>(context, "expense_mysql_immediate_sync")
+        enqueueSyncOneShot<ExpenseSyncWorker>(context, "expense_mysql_immediate_sync")
     }
 }
