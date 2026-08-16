@@ -76,8 +76,14 @@ fun LoginScreen(
         profileImageUri = it
     }
 
-    LaunchedEffect(user) {
-        if (user != null) onLoggedIn()
+    // Both conditions, not just the user. Firebase reports a signed-in user the
+    // moment authentication succeeds, which is before any data left by a
+    // previous account has been cleared — navigating on that alone landed the
+    // new person on a home screen showing somebody else's money.
+    val sessionReady by authViewModel.sessionReady.collectAsState()
+
+    LaunchedEffect(user, sessionReady) {
+        if (user != null && sessionReady) onLoggedIn()
     }
 
     Column(

@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.asStateFlow
 interface NarrativePreferenceStore {
     val enabled: StateFlow<Boolean>
     fun setEnabled(value: Boolean)
+
+    /** See [SmartExtractionPreferenceStore.clearForNewUser]: consent is personal. */
+    fun clearForNewUser()
 }
 
 @Singleton
@@ -37,6 +40,11 @@ class SharedPrefsNarrativePreferenceStore @Inject constructor(
     override fun setEnabled(value: Boolean) {
         preferences.edit().putBoolean(KEY_ENABLED, value).apply()
         _enabled.value = value
+    }
+
+    override fun clearForNewUser() {
+        preferences.edit().clear().apply()
+        _enabled.value = false
     }
 
     private companion object {

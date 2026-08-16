@@ -50,6 +50,17 @@ class RecurringReminderState @Inject constructor(
         preferences.edit().putStringSet(KEY_ANNOUNCED, signatures).apply()
     }
 
+    /**
+     * Forgets what has been announced when a different account takes over.
+     *
+     * The ids these are keyed by belong to the previous user's commitments, and
+     * after their data is cleared the same ids will be reused by somebody else's
+     * — so leaving these would silence the new user's first reminders.
+     */
+    fun clearForNewUser() {
+        preferences.edit().clear().apply()
+    }
+
     private fun dueKey(recurringId: Int) = "due_$recurringId"
 
     private companion object {

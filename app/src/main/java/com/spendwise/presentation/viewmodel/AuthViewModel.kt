@@ -1,24 +1,31 @@
 package com.spendwise.presentation.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendwise.domain.repository.AuthRepository
 import com.spendwise.domain.repository.AuthUser
 import com.spendwise.domain.repository.Gender
+import com.spendwise.domain.usecase.PrepareUserSessionUseCase
+import com.spendwise.domain.usecase.SignOutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val prepareUserSession: PrepareUserSessionUseCase,
+    private val signOutUseCase: SignOutUseCase
 ) : ViewModel() {
     private val _isAuthResolved = MutableStateFlow(false)
 
@@ -36,11 +43,44 @@ class AuthViewModel @Inject constructor(
     private val _loginState = MutableStateFlow(LoginUiState())
     val loginState = _loginState.asStateFlow()
 
+    private val _sessionReady = MutableStateFlow(false)
+
+    /**
+     * True once this device's data is known to belong to the signed-in account.
+     *
+     * Nothing may show financial data before this. Firebase reports a signed-in
+     * user the instant authentication succeeds, which is well before the
+     * previous account's rows have been cleared out of the local database —
+     * navigating on the user alone put the new person on a home screen full of
+     * somebody else's income and spending while the wipe ran behind it.
+     */
+    val sessionReady: StateFlow<Boolean> = _sessionReady.asStateFlow()
+
+    init {
+        // Driven by the auth state rather than called from each sign-in path.
+        // Signing in navigates straight to the home screen and never revisits
+        // the splash, so per-screen checks missed account switches made without
+        // restarting the app — which is exactly how the leak got in.
+        viewModelScope.launch {
+            authRepository.currentUser
+                .map { it?.id }
+                .distinctUntilChanged()
+                .collect { uid ->
+                    _sessionReady.value = false
+                    if (uid != null) {
+                        runCatching { prepareUserSession() }
+                            .onFailure { Log.w(TAG, "Could not prepare the session.", it) }
+                        _sessionReady.value = true
+                    }
+                }
+        }
+    }
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _loginState.value = LoginUiState(isLoading = true)
             val result = authRepository.loginWithEmail(email.trim(), password)
-            _loginState.value = LoginUiState(error = result.exceptionOrNull()?.message)
+            finishSignIn(result)
         }
     }
 
@@ -68,7 +108,7 @@ class AuthViewModel @Inject constructor(
                 gender = gender,
                 profileImageUri = profileImageUri
             )
-            _loginState.value = LoginUiState(error = result.exceptionOrNull()?.message)
+            finishSignIn(result)
         }
     }
 
@@ -76,8 +116,17 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _loginState.value = LoginUiState(isLoading = true)
             val result = authRepository.loginWithGoogleIdToken(idToken)
-            _loginState.value = LoginUiState(error = result.exceptionOrNull()?.message)
+            finishSignIn(result)
         }
+    }
+
+    /**
+     * Clearing the previous account's data is not done here — it is driven by
+     * the auth state above, so every route into a session goes through it rather
+     * than only the ones somebody remembered to wire up.
+     */
+    private fun finishSignIn(result: Result<*>) {
+        _loginState.value = LoginUiState(error = result.exceptionOrNull()?.message)
     }
 
     fun showAuthError(message: String) {
@@ -86,8 +135,12 @@ class AuthViewModel @Inject constructor(
 
     fun logout() {
         viewModelScope.launch {
-            authRepository.logout()
+            signOutUseCase()
         }
+    }
+
+    private companion object {
+        const val TAG = "AuthViewModel"
     }
 }
 

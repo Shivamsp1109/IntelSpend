@@ -83,8 +83,14 @@ fun SplashScreen(
     // A signed-in user whose device holds nothing has either just reinstalled or
     // is on a new handset. Their history is on the server, so it is pulled back
     // before the app opens onto what would otherwise look like an empty account.
-    LaunchedEffect(user) {
-        if (user != null) {
+    // Waits for the session to be settled first. A restore only fills an empty
+    // database, so running it while a previous account's rows were still there
+    // would find the database non-empty, skip, and leave this user looking at
+    // somebody else's history.
+    val sessionReady by authViewModel.sessionReady.collectAsState()
+
+    LaunchedEffect(user, sessionReady) {
+        if (user != null && sessionReady) {
             restoreViewModel.restoreIfNeeded()
         }
     }

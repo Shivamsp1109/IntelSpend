@@ -1,7 +1,9 @@
 package com.spendwise.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendwise.domain.usecase.PrepareUserSessionUseCase
 import com.spendwise.domain.usecase.RestoreFromServerUseCase
 import com.spendwise.domain.usecase.RestoreOutcome
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +49,10 @@ class RestoreViewModel @Inject constructor(
                 RestoreOutcome.NotNeeded, RestoreOutcome.Failed -> RestoreState.Done(0)
             }
         }
+    }
+
+    private companion object {
+        const val TAG = "RestoreViewModel"
     }
 }
 

@@ -159,5 +159,10 @@ class HomeViewModelTest {
         override fun setIncomeDrafts(value: String) {
             drafts.value = value
         }
+
+        override fun clearForNewUser() {
+            income.value = 0.0
+            drafts.value = "{}"
+        }
     }
 }

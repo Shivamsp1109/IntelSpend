@@ -18,6 +18,15 @@ import kotlinx.coroutines.flow.asStateFlow
 interface SmartExtractionPreferenceStore {
     val enabled: StateFlow<Boolean>
     fun setEnabled(value: Boolean)
+
+    /**
+     * Forgets the choice when a different account takes over the device.
+     *
+     * Consent belongs to a person, not a handset. One user agreeing to send
+     * their bank statements to a cloud model must never leave the next user
+     * opted in to something they were never asked about.
+     */
+    fun clearForNewUser()
 }
 
 @Singleton
@@ -33,6 +42,14 @@ class SharedPrefsSmartExtractionPreferenceStore @Inject constructor(
     override fun setEnabled(value: Boolean) {
         preferences.edit().putBoolean(KEY_ENABLED, value).apply()
         _enabled.value = value
+    }
+
+    // The in-memory value is reset too, not just the file. This is a singleton
+    // that read the file once at construction, so clearing only the file would
+    // leave the old answer live for the rest of the process.
+    override fun clearForNewUser() {
+        preferences.edit().clear().apply()
+        _enabled.value = false
     }
 
     private companion object {

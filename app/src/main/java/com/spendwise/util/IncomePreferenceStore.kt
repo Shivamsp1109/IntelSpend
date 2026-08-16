@@ -13,6 +13,13 @@ interface IncomePreferenceStore {
     val incomeDrafts: StateFlow<String>
     fun setMonthlyIncome(value: Double)
     fun setIncomeDrafts(value: String)
+
+    /**
+     * Forgets this account's income when a different one takes over the device.
+     *
+     * Someone else's salary showing as yours is both wrong and disclosing.
+     */
+    fun clearForNewUser()
 }
 
 @Singleton
@@ -39,6 +46,12 @@ class SharedPrefsIncomePreferenceStore @Inject constructor(
             .putString(KEY_INCOME_DRAFTS, value)
             .apply()
         _incomeDrafts.value = value
+    }
+
+    override fun clearForNewUser() {
+        preferences.edit().clear().apply()
+        _monthlyIncome.value = 0.0
+        _incomeDrafts.value = "{}"
     }
 
     private companion object {
