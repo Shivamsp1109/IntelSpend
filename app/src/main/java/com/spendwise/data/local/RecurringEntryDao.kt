@@ -102,6 +102,10 @@ interface RecurringEntryDao {
     @Query("UPDATE recurring SET status = :status, isSynced = 0 WHERE id = :id")
     suspend fun updateStatus(id: Int, status: String)
 
+    /** See ExpenseDao.markSynced — one invalidation for a batch, not one per row. */
+    @Query("UPDATE recurring SET isSynced = 1 WHERE id IN (:ids)")
+    suspend fun markSynced(ids: List<Int>)
+
     /**
      * Records that a payment landed, and when the next one is now expected.
      *

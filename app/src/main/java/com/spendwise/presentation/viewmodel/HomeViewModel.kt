@@ -25,12 +25,15 @@ import com.spendwise.util.IncomePreferenceStore
 import com.spendwise.util.NetworkMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import com.spendwise.domain.repository.AuthUser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -69,6 +72,10 @@ class HomeViewModel @Inject constructor(
      * recompute insights because connectivity flickered.
      */
     private val monthlyInsights: Flow<List<Insight>> = analyticsRepository.changes()
+        // A sync writes many rows in a burst and this fires on every one of
+        // them, each time re-running the aggregate queries behind an insight.
+        // Settling first turns a hundred redundant rounds into one.
+        .debounce(SETTLE_MILLIS)
         .mapLatest {
             runCatching { getSpendingSummaryUseCase(AnalyticsPeriod.thisMonth()).insights }
                 .getOrElse { error ->
@@ -85,19 +92,27 @@ class HomeViewModel @Inject constructor(
             getPendingSyncCountUseCase(),
             authRepository.currentUser
         ) { expenses, incomes, isOnline, pendingSyncCount, user ->
-            val monthlyIncome = incomes.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount }
-            HomeUiState(
-                userName = user?.name?.takeIf { it.isNotBlank() } ?: "User",
-                monthlyIncome = monthlyIncome,
-                totalExpense = expenses.sumOf { it.amount },
-                monthExpense = expenses.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount },
-                monthExpenseTrendText = monthExpenseTrendText(expenses),
-                todayExpense = expenses.filter { DateUtils.isToday(it.date) }.sumOf { it.amount },
-                recentTransactions = expenses.take(5),
-                budgetStatus = getBudgetStatusUseCase(expenses, monthlyIncome),
-                networkSyncStatus = NetworkSyncStatus(isOnline, pendingSyncCount)
-            )
-        },
+            RawHomeInputs(expenses, incomes, isOnline, pendingSyncCount, user)
+        }
+            // expenses and incomes are the whole table, unpaged, and every sync
+            // write re-emits it — a burst of a few hundred rows recomputed this
+            // several hundred times in a row for one visible result. Settling
+            // first collapses a burst to one pass.
+            .debounce(SETTLE_MILLIS)
+            .map { (expenses, incomes, isOnline, pendingSyncCount, user) ->
+                val monthlyIncome = incomes.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount }
+                HomeUiState(
+                    userName = user?.name?.takeIf { it.isNotBlank() } ?: "User",
+                    monthlyIncome = monthlyIncome,
+                    totalExpense = expenses.sumOf { it.amount },
+                    monthExpense = expenses.filter { DateUtils.isThisMonth(it.date) }.sumOf { it.amount },
+                    monthExpenseTrendText = monthExpenseTrendText(expenses),
+                    todayExpense = expenses.filter { DateUtils.isToday(it.date) }.sumOf { it.amount },
+                    recentTransactions = expenses.take(5),
+                    budgetStatus = getBudgetStatusUseCase(expenses, monthlyIncome),
+                    networkSyncStatus = NetworkSyncStatus(isOnline, pendingSyncCount)
+                )
+            },
         monthlyInsights
     ) { state, insights -> state.copy(insights = insights) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
@@ -183,3 +198,15 @@ data class HomeUiState(
 )
 
 private const val TAG = "HomeViewModel"
+
+/** Long enough to let a burst of writes finish, short enough to still feel live. */
+private const val SETTLE_MILLIS = 300L
+
+/** What the raw combine carries before the heavy computation below it. */
+private data class RawHomeInputs(
+    val expenses: List<Expense>,
+    val incomes: List<Income>,
+    val isOnline: Boolean,
+    val pendingSyncCount: Int,
+    val user: AuthUser?
+)

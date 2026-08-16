@@ -54,16 +54,28 @@ class IncomeRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * See ExpenseRepositoryImpl.syncPendingExpenses — same shape, same reason.
+     * Marking each row synced individually invalidated every observer of the
+     * incomes table once per row, which during a large batch made the app
+     * visibly stall for as long as the sync ran.
+     */
     override suspend fun syncPendingIncomes() {
         // 1. Upserts
-        dao.getPendingSync().forEach { entity ->
-            runCatching {
-                remoteDataSource.upsertIncome(entity)
-                dao.updateIncome(entity.copy(isSynced = true))
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to sync income id=${entity.id}; will retry.", error)
+        val uploaded = mutableListOf<Int>()
+        for (entity in dao.getPendingSync()) {
+            runCatching { remoteDataSource.upsertIncome(entity) }
+                .onSuccess { uploaded += entity.id }
+                .onFailure { error ->
+                    Log.w(TAG, "Failed to sync income id=${entity.id}; will retry.", error)
+                }
+
+            if (uploaded.size >= MARK_SYNCED_BATCH) {
+                dao.markSynced(uploaded.toList())
+                uploaded.clear()
             }
         }
+        if (uploaded.isNotEmpty()) dao.markSynced(uploaded)
 
         // 2. Deletions
         dao.getPendingDeleteSync().forEach { delete ->
@@ -100,6 +112,9 @@ class IncomeRepositoryImpl @Inject constructor(
 
     private companion object {
         const val TAG = "IncomeRepository"
+
+        /** See ExpenseRepositoryImpl.MARK_SYNCED_BATCH. */
+        const val MARK_SYNCED_BATCH = 50
     }
 }
 

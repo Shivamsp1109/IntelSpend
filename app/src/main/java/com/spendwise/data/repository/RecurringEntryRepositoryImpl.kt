@@ -59,15 +59,22 @@ class RecurringEntryRepositoryImpl @Inject constructor(
         }
     }
 
+    /** See ExpenseRepositoryImpl.syncPendingExpenses — same shape, same reason. */
     override suspend fun syncPendingRecurring() {
-        dao.getPendingSync().forEach { entity ->
-            runCatching {
-                remoteDataSource.upsertRecurring(entity)
-                dao.updateRecurring(entity.copy(isSynced = true))
-            }.onFailure { error ->
-                Log.w(TAG, "Failed to sync recurring id=${entity.id}; will retry.", error)
+        val uploaded = mutableListOf<Int>()
+        for (entity in dao.getPendingSync()) {
+            runCatching { remoteDataSource.upsertRecurring(entity) }
+                .onSuccess { uploaded += entity.id }
+                .onFailure { error ->
+                    Log.w(TAG, "Failed to sync recurring id=${entity.id}; will retry.", error)
+                }
+
+            if (uploaded.size >= MARK_SYNCED_BATCH) {
+                dao.markSynced(uploaded.toList())
+                uploaded.clear()
             }
         }
+        if (uploaded.isNotEmpty()) dao.markSynced(uploaded)
     }
 
     private suspend fun syncRecurringOrLog(entity: RecurringEntity) {
@@ -81,6 +88,9 @@ class RecurringEntryRepositoryImpl @Inject constructor(
 
     private companion object {
         const val TAG = "RecurringEntryRepository"
+
+        /** See ExpenseRepositoryImpl.MARK_SYNCED_BATCH. */
+        const val MARK_SYNCED_BATCH = 50
     }
 }
 

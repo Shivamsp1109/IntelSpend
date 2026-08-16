@@ -14,6 +14,10 @@ interface IncomeDao {
     @Query("SELECT * FROM incomes ORDER BY date DESC")
     fun observeIncomes(): Flow<List<IncomeEntity>>
 
+    /** See ExpenseDao.markSynced — one invalidation for a batch, not one per row. */
+    @Query("UPDATE incomes SET isSynced = 1 WHERE id IN (:ids)")
+    suspend fun markSynced(ids: List<Int>)
+
     @Query("SELECT * FROM incomes WHERE date >= :startDate AND date <= :endDate ORDER BY date DESC")
     suspend fun getIncomesBetweenDates(startDate: Long, endDate: Long): List<IncomeEntity>
 
