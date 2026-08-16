@@ -56,7 +56,7 @@ class RecurringDetectionWorker @AssistedInject constructor(
             else "Found ${fresh.size} recurring payments"
 
         val text = fresh.take(MAX_LISTED).joinToString("\n") { candidate ->
-            val amount = CurrencyFormatter.format(candidate.averageAmount, candidate.currency)
+            val amount = CurrencyFormatter.format(candidate.amount, candidate.currency)
             "$amount · ${candidate.merchant} · ${candidate.cadence.label.lowercase()}"
         } + if (fresh.size > MAX_LISTED) "\nand ${fresh.size - MAX_LISTED} more" else ""
 

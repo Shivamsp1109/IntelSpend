@@ -34,7 +34,22 @@ data class RecurringCandidate(
     val nature: TransactionNature,
     val category: ExpenseCategory,
     val currency: Currency,
-    val averageAmount: Double,
+    /**
+     * What this costs now — not the average of what it has ever cost.
+     *
+     * The distinction is the difference between a usable figure and a fictional
+     * one. A subscription that went from ₹199 to ₹139 has an average of ₹169: a
+     * price that was never charged, will never be charged, and would go straight
+     * into the user's monthly obligations as though it were real.
+     */
+    val amount: Double,
+    /**
+     * What it cost before the most recent price change, when there was one.
+     *
+     * Kept so the change can be stated rather than silently absorbed — a
+     * subscription quietly going up is exactly the thing someone wants told.
+     */
+    val previousAmount: Double? = null,
     val occurrences: List<RecurringOccurrence>,
     val confidence: Double,
     val basis: MatchBasis = MatchBasis.NAME

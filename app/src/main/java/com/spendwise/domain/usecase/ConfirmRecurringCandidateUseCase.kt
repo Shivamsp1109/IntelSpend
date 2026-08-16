@@ -29,7 +29,7 @@ class ConfirmRecurringCandidateUseCase @Inject constructor(
 
         val entry = RecurringEntry(
             title = candidate.merchant,
-            amount = candidate.averageAmount,
+            amount = candidate.amount,
             cadence = candidate.cadence,
             type = candidate.type,
             currency = candidate.currency,

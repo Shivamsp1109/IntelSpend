@@ -67,6 +67,7 @@ import com.spendwise.domain.model.RecurringType
 import com.spendwise.domain.model.TransactionNature
 import com.spendwise.domain.model.monthlyEquivalent
 import com.spendwise.presentation.components.Amount
+import com.spendwise.presentation.components.SpendWiseOrange
 import com.spendwise.presentation.components.SpendWisePurple
 import com.spendwise.presentation.components.SpendWiseTextMuted
 import com.spendwise.presentation.components.chartColor
@@ -275,9 +276,16 @@ private fun CandidateCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = SpendWiseTextMuted
                     )
+                    priceChange(candidate)?.let { change ->
+                        Text(
+                            change,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SpendWiseOrange
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
-                Amount(CurrencyFormatter.format(candidate.averageAmount, candidate.currency))
+                Amount(CurrencyFormatter.format(candidate.amount, candidate.currency))
             }
 
             Spacer(Modifier.height(6.dp))
@@ -509,6 +517,18 @@ private fun describe(candidate: RecurringCandidate): String = buildString {
     if (candidate.confidence < 0.6) append(" · worth checking")
     append(" · ${(candidate.confidence * 100).roundToInt()}% sure")
 }
+
+/**
+ * States a price change rather than absorbing it.
+ *
+ * A subscription quietly going up is one of the few things in this list somebody
+ * would act on, and it is invisible in a single current figure.
+ */
+private fun priceChange(candidate: RecurringCandidate): String? =
+    candidate.previousAmount?.let { previous ->
+        val direction = if (candidate.amount > previous) "up from" else "down from"
+        "Price $direction ${CurrencyFormatter.format(previous, candidate.currency)}"
+    }
 
 private fun plural(count: Int, word: String): String = if (count == 1) word else "${word}s"
 

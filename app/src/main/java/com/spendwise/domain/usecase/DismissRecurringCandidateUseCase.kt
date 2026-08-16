@@ -28,7 +28,7 @@ class DismissRecurringCandidateUseCase @Inject constructor(
             nature = candidate.nature.name,
             category = candidate.category.name,
             cadence = candidate.cadence.name,
-            lastSeenAmount = candidate.averageAmount,
+            lastSeenAmount = candidate.amount,
             lastSeenOccurrenceDate = candidate.lastOccurrenceDate,
             dismissedAt = now
         )

@@ -328,22 +328,68 @@ object RecurringDetector {
             MatchBasis.NAME -> fit.cadence.confidenceCeiling(dates.size)
         }
 
+        val charge = currentCharge(occurrences, mean)
+
         return RecurringCandidate(
             // The most recent wording, so the user sees the acronyms and
             // capitalisation they typed rather than a title-cased rewrite of it.
             merchant = rows.maxBy { it.date }.merchant,
             identity = identity,
             cadence = fit.cadence,
-            type = if (variation <= FIXED_AMOUNT_VARIATION) RecurringType.FIXED else RecurringType.VARIABLE,
+            type = charge.type,
             nature = dominant { it.nature }.let(TransactionNature::fromName),
             category = dominant { it.category }.let(ExpenseCategory::fromLabel),
             currency = Currency.fromCode(rows.first().currency),
-            averageAmount = mean,
+            amount = charge.amount,
+            previousAmount = charge.previousAmount,
             occurrences = occurrences.sortedBy { it.date },
             confidence = confidenceFor(fit, variation, dates.size, ceiling),
             basis = basis
         )
     }
+
+    /**
+     * What this commitment charges now, read from the end of the series rather
+     * than averaged across it.
+     *
+     * Prices change. A subscription that went from ₹199 to ₹139 averages to
+     * ₹169 — a figure that was never charged and never will be, which would
+     * nonetheless be added to the user's monthly obligations and used to decide
+     * what they can afford. What matters is the price in force.
+     *
+     * The run of most recent payments that agree with each other is what settles
+     * it. Two in a row at the same figure is a price; one is not yet, and a
+     * series where no two consecutive payments agree is a genuinely variable
+     * bill — an electricity account — where the average really is the most
+     * useful thing to report.
+     */
+    private fun currentCharge(occurrences: List<RecurringOccurrence>, mean: Double): Charge {
+        val newestFirst = occurrences.sortedByDescending { it.date }
+        val latest = newestFirst.first().amount
+        val run = newestFirst.takeWhile { sameAmount(it.amount, latest) }
+
+        if (run.size < 2) {
+            // No settled price: the amount moves every time, so the average over
+            // the series is the honest summary of what it costs.
+            return Charge(amount = mean, previousAmount = null, type = RecurringType.VARIABLE)
+        }
+
+        // Whatever was being charged before the current price took effect. Null
+        // when the price has never changed.
+        val previous = newestFirst.drop(run.size).firstOrNull()?.amount
+
+        return Charge(
+            amount = latest,
+            previousAmount = previous?.takeUnless { sameAmount(it, latest) },
+            type = RecurringType.FIXED
+        )
+    }
+
+    private data class Charge(
+        val amount: Double,
+        val previousAmount: Double?,
+        val type: RecurringType
+    )
 
     /**
      * The value most of these payments carry.
@@ -450,7 +496,7 @@ object RecurringDetector {
 
         val reference = abs(match.lastSeenAmount)
         if (reference == 0.0) return true
-        val drift = abs(candidate.averageAmount - match.lastSeenAmount) / reference
+        val drift = abs(candidate.amount - match.lastSeenAmount) / reference
         return drift <= DISMISSAL_AMOUNT_TOLERANCE
     }
 

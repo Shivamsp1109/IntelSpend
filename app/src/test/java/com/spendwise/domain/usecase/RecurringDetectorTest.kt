@@ -81,7 +81,7 @@ class RecurringDetectorTest {
         assertEquals(1, found.size)
         assertEquals(RecurringCadence.MONTHLY, found.first().cadence)
         assertEquals(RecurringType.FIXED, found.first().type)
-        assertEquals(649.0, found.first().averageAmount, 0.01)
+        assertEquals(649.0, found.first().amount, 0.01)
     }
 
     /** A phone or electricity bill: reliably monthly, never quite the same figure. */
@@ -283,8 +283,8 @@ class RecurringDetectorTest {
         val found = detect(rows)
 
         assertEquals(2, found.size)
-        assertTrue(found.any { it.currency == Currency.INR && it.averageAmount > 1_000 })
-        assertTrue(found.any { it.currency == Currency.USD && it.averageAmount < 100 })
+        assertTrue(found.any { it.currency == Currency.INR && it.amount > 1_000 })
+        assertTrue(found.any { it.currency == Currency.USD && it.amount < 100 })
     }
 
     @Test
@@ -369,7 +369,7 @@ class RecurringDetectorTest {
             nature = candidate.nature.name,
             category = candidate.category.name,
             cadence = candidate.cadence.name,
-            lastSeenAmount = candidate.averageAmount,
+            lastSeenAmount = candidate.amount,
             lastSeenOccurrenceDate = candidate.lastOccurrenceDate,
             dismissedAt = now
         )
@@ -516,7 +516,7 @@ class RecurringDetectorTest {
 
         assertEquals(1, found.size)
         assertEquals(3, found.single().occurrenceCount)
-        assertEquals(18_500.0, found.single().averageAmount, 0.01)
+        assertEquals(18_500.0, found.single().amount, 0.01)
         assertEquals(MatchBasis.AMOUNT, found.single().basis)
     }
 
@@ -614,7 +614,7 @@ class RecurringDetectorTest {
         val found = detect(subscription + shopping)
 
         assertEquals(1, found.size)
-        assertEquals(299.0, found.single().averageAmount, 0.01)
+        assertEquals(299.0, found.single().amount, 0.01)
         assertEquals(RecurringCadence.MONTHLY, found.single().cadence)
         assertEquals(5, found.single().occurrenceCount)
 
@@ -640,7 +640,7 @@ class RecurringDetectorTest {
         val found = detect(rows)
 
         assertEquals(2, found.size)
-        assertEquals(setOf(130.0, 1_950.0), found.map { it.averageAmount }.toSet())
+        assertEquals(setOf(130.0, 1_950.0), found.map { it.amount }.toSet())
         assertTrue("both are the same payee", found.all { it.basis == MatchBasis.NAME })
     }
 
@@ -655,6 +655,77 @@ class RecurringDetectorTest {
         )
 
         assertTrue(detect(rows).isEmpty())
+    }
+
+    // ── A price that changed partway through ──────────────────────────────────
+
+    /**
+     * The figure has to be what the commitment costs, not the average of what it
+     * has ever cost. A subscription that went from ₹199 to ₹139 averages to a
+     * price that was never charged and never will be — and that number would go
+     * straight into the user's monthly obligations as though it were real.
+     */
+    @Test
+    fun `a subscription whose price changed reports the current price`() {
+        val latest = today.minusDays(3)
+        val rows = listOf(
+            row("Spotify", latest.minusMonths(5), 199.0),
+            row("Spotify", latest.minusMonths(4), 199.0),
+            row("Spotify", latest.minusMonths(3), 199.0),
+            row("Spotify", latest.minusMonths(2), 139.0),
+            row("Spotify", latest.minusMonths(1), 139.0),
+            row("Spotify", latest, 139.0)
+        )
+
+        val found = detect(rows).single()
+
+        assertEquals(139.0, found.amount, 0.01)
+        assertEquals(199.0, found.previousAmount!!, 0.01)
+        // A settled price, even though the series as a whole is not uniform.
+        assertEquals(RecurringType.FIXED, found.type)
+    }
+
+    @Test
+    fun `a price rise is reported the same way`() {
+        val latest = today.minusDays(3)
+        val rows = listOf(
+            row("Prime", latest.minusMonths(3), 179.0),
+            row("Prime", latest.minusMonths(2), 179.0),
+            row("Prime", latest.minusMonths(1), 299.0),
+            row("Prime", latest, 299.0)
+        )
+
+        val found = detect(rows).single()
+
+        assertEquals(299.0, found.amount, 0.01)
+        assertEquals(179.0, found.previousAmount!!, 0.01)
+    }
+
+    @Test
+    fun `a price that never changed reports no change`() {
+        val found = detect(monthly("Netflix", months = 6, amount = 649.0)).single()
+
+        assertEquals(649.0, found.amount, 0.01)
+        assertNull(found.previousAmount)
+    }
+
+    /**
+     * A bill that moves every month has no settled price to report, so the
+     * average really is the most useful summary — and there is no single earlier
+     * figure that a "changed from" would honestly name.
+     */
+    @Test
+    fun `a genuinely variable bill still reports its average`() {
+        val amounts = listOf(1_240.0, 1_180.0, 1_390.0, 1_275.0, 1_310.0)
+        val rows = amounts.mapIndexed { index, amount ->
+            row("BESCOM", today.minusDays(3).minusMonths(index.toLong()), amount)
+        }
+
+        val found = detect(rows).single()
+
+        assertEquals(RecurringType.VARIABLE, found.type)
+        assertEquals(amounts.average(), found.amount, 0.01)
+        assertNull(found.previousAmount)
     }
 
     // ── Not pooling strangers who were paid the same ──────────────────────────
