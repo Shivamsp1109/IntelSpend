@@ -114,6 +114,13 @@ interface ExpenseDao {
      * made every hand-entered payment invisible to detection. A commitment is
      * identified by what repeats, and "Car EMI" typed in the title identifies it
      * perfectly well.
+     *
+     * Payments already attributed to a tracked commitment are left out. That is
+     * what stops a commitment being offered twice, and it has to be done here
+     * rather than by filtering finished candidates against the tracked list: a
+     * payee can hold several separate commitments — a ₹59 charge on the 18th and
+     * a ₹299 one on the 28th — and matching those by name alone made accepting
+     * one silently swallow the others.
      */
     @Query(
         """
@@ -127,6 +134,7 @@ interface ExpenseDao {
         FROM expenses
         WHERE TRIM(COALESCE(NULLIF(TRIM(merchant), ''), title)) != ''
           AND nature IN ('Spending', 'LoanRepayment', 'Investment', 'Savings')
+          AND id NOT IN (SELECT expenseId FROM recurring_expense_cross_ref)
         ORDER BY merchant ASC, date ASC
         """
     )

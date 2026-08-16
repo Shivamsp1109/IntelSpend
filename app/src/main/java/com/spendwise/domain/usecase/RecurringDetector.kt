@@ -119,6 +119,16 @@ object RecurringDetector {
      */
     private const val MAX_ANCHORED_PAYEES = 2
 
+    /**
+     * How far two figures at one payee may be apart and still be the same
+     * commitment.
+     *
+     * Generous, because this only distinguishes separate commitments from each
+     * other; a price that moved within one commitment is a different question,
+     * asked and answered separately.
+     */
+    private const val SAME_COMMITMENT_AMOUNT_TOLERANCE = 0.5
+
     fun detect(
         rows: List<ExpenseTimeSeriesRow>,
         existing: List<RecurringEntry>,
@@ -475,12 +485,45 @@ object RecurringDetector {
 
     // ── Exclusions ────────────────────────────────────────────────────────────
 
+    /**
+     * Whether this is a commitment the user is already tracking.
+     *
+     * A backstop rather than the main defence — payments belonging to a tracked
+     * commitment are excluded from the series before detection ever sees them.
+     * This catches the window between a payment arriving and reconciliation
+     * attributing it.
+     *
+     * The amount is part of the comparison, and has to be. One payee can hold
+     * several separate commitments — a ₹59 charge on the 18th and a ₹299 one on
+     * the 28th are two subscriptions, not one — and matching on the name alone
+     * meant accepting the first made the app treat every other charge from that
+     * payee as already handled, so they silently vanished from the list.
+     *
+     * A price the user has been asked about counts as the same commitment too.
+     * Otherwise a subscription that went up would come back as a brand new
+     * suggestion alongside the question about its own price change.
+     */
     private fun isAlreadyTracked(candidate: RecurringCandidate, existing: List<RecurringEntry>): Boolean =
         existing.any { entry ->
             entry.currency == candidate.currency &&
                 entry.nature == candidate.nature &&
                 (entry.title.equals(candidate.merchant, ignoreCase = true) ||
-                    MerchantSimilarity.sameMerchant(entry.title, candidate.merchant))
+                    MerchantSimilarity.sameMerchant(entry.title, candidate.merchant)) &&
+                entry.chargesAbout(candidate.amount)
+        }
+
+    /**
+     * Whether a figure is recognisably this commitment's own charge.
+     *
+     * Wide, because it only has to tell one commitment from another at the same
+     * payee rather than police small movements — a price rise is a separate
+     * question with its own answer. Narrow enough that ₹59 and ₹299 are never
+     * confused for each other.
+     */
+    private fun RecurringEntry.chargesAbout(other: Double): Boolean =
+        listOfNotNull(amount, pendingAmount, declinedAmount).any { known ->
+            val larger = maxOf(abs(known), abs(other))
+            larger == 0.0 || abs(known - other) / larger <= SAME_COMMITMENT_AMOUNT_TOLERANCE
         }
 
     private fun isStillDismissed(

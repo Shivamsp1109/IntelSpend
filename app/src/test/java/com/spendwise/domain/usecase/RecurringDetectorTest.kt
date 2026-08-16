@@ -357,6 +357,82 @@ class RecurringDetectorTest {
         assertTrue(found.isEmpty())
     }
 
+    /**
+     * The failure this missed before. Two separate subscriptions to one payee —
+     * ₹59 on the 18th and ₹299 on the 28th — were both detected, but accepting
+     * one made the app treat the other as already handled, and it vanished from
+     * the list without ever being dismissed.
+     *
+     * The earlier test only checked that both were *found*. Nothing covered what
+     * happened once one of them was confirmed, which is where it broke.
+     */
+    @Test
+    fun `tracking one subscription does not hide another from the same payee`() {
+        val latest = today.minusDays(2)
+        val small = (0 until 4).map { back ->
+            row("Google P", latest.minusDays(10).minusMonths(back.toLong()), 59.0)
+        }
+        val large = (0 until 4).map { back ->
+            row("Google P", latest.minusMonths(back.toLong()), 299.0)
+        }
+
+        val tracked = RecurringEntry(
+            id = 1,
+            title = "Google P",
+            amount = 59.0,
+            cadence = RecurringCadence.MONTHLY,
+            type = RecurringType.FIXED,
+            currency = Currency.INR,
+            nature = TransactionNature.Spending,
+            category = ExpenseCategory.Subscriptions
+        )
+
+        val found = detect(small + large, existing = listOf(tracked))
+
+        assertEquals(1, found.size)
+        assertEquals(299.0, found.single().amount, 0.01)
+    }
+
+    /** The tracked one itself is still not offered back. */
+    @Test
+    fun `the subscription already tracked is not offered again`() {
+        val rows = monthly("Netflix", months = 5, amount = 649.0)
+        val tracked = RecurringEntry(
+            id = 1,
+            title = "Netflix",
+            amount = 649.0,
+            cadence = RecurringCadence.MONTHLY,
+            type = RecurringType.FIXED,
+            currency = Currency.INR,
+            nature = TransactionNature.Spending,
+            category = ExpenseCategory.Subscriptions
+        )
+
+        assertTrue(detect(rows, existing = listOf(tracked)).isEmpty())
+    }
+
+    /**
+     * A commitment whose price moved is still that commitment, not a new one —
+     * the change is a question with its own answer, and re-suggesting it
+     * alongside would ask the same thing twice in two different ways.
+     */
+    @Test
+    fun `a tracked commitment whose price moved is not suggested afresh`() {
+        val rows = monthly("Hotstar", months = 4, amount = 299.0)
+        val tracked = RecurringEntry(
+            id = 1,
+            title = "Hotstar",
+            amount = 249.0,
+            cadence = RecurringCadence.MONTHLY,
+            type = RecurringType.FIXED,
+            currency = Currency.INR,
+            nature = TransactionNature.Spending,
+            category = ExpenseCategory.Subscriptions
+        )
+
+        assertTrue(detect(rows, existing = listOf(tracked)).isEmpty())
+    }
+
     @Test
     fun `a dismissed pattern stays dismissed`() {
         val rows = monthly("Netflix", months = 6, amount = 649.0)
