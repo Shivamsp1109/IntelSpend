@@ -109,6 +109,16 @@ object RecurringDetector {
      */
     private const val AMOUNT_ANCHORED_CEILING = 0.65
 
+    /**
+     * How many distinct payees a sum may be shared by before it stops being one
+     * commitment written inconsistently and starts being a coincidence.
+     *
+     * Two: the manual entry and the imported statement row for the same charge.
+     * Three or more separate people paid the same round figure is what people's
+     * spending looks like, not what a commitment looks like.
+     */
+    private const val MAX_ANCHORED_PAYEES = 2
+
     fun detect(
         rows: List<ExpenseTimeSeriesRow>,
         existing: List<RecurringEntry>,
@@ -117,21 +127,47 @@ object RecurringDetector {
     ): List<RecurringCandidate> {
         if (rows.isEmpty()) return emptyList()
 
-        val named = buildNameClusters(rows)
-        val fromNames = named.mapNotNull { it.toCandidate(now, MatchBasis.NAME) }
+        val clusters = buildNameClusters(rows)
+        val found = mutableListOf<RecurringCandidate>()
+        val claimed = mutableSetOf<Int>()
 
-        // Only what the first pass could not account for, so a commitment is
-        // never offered twice under two different descriptions.
-        val claimed = named
-            .filter { cluster -> fromNames.any { it.identity == cluster.identity } }
-            .flatMap { it.rows }
-            .map { it.expenseId }
-            .toSet()
+        // Everything paid to one payee, taken as a whole. The ordinary case: a
+        // subscription with a merchant that does nothing else.
+        for (cluster in clusters) {
+            val candidate = cluster.toCandidate(now, MatchBasis.NAME) ?: continue
+            found += candidate
+            claimed += cluster.rows.map { it.expenseId }
+        }
 
-        val fromAmounts = buildAmountClusters(rows.filterNot { it.expenseId in claimed })
-            .mapNotNull { it.toCandidate(now, MatchBasis.AMOUNT) }
+        // One repeating charge hiding among a payee's other spending.
+        //
+        // A merchant you both subscribe to and shop at — Amazon, Google, Apple —
+        // produces one cluster holding a ₹299 monthly subscription and thirty
+        // unrelated purchases. Taken as a whole it fits no cadence and its
+        // amounts vary hugely, so the whole cluster was rejected and the
+        // subscription inside it went with it. Splitting by the exact sum finds
+        // the charge that actually repeats.
+        for (cluster in clusters) {
+            if (cluster.rows.any { it.expenseId in claimed }) continue
+            for (subset in cluster.splitByExactAmount()) {
+                // A firmer floor than usual. One payee's spending throws up
+                // coincidental repeats of the same figure far more readily than
+                // two separate payees do, so a long cadence backed by only two
+                // payments is not enough evidence here.
+                val candidate = subset.toCandidate(now, MatchBasis.NAME, minOccurrences = 3) ?: continue
+                found += candidate
+                claimed += subset.rows.map { it.expenseId }
+            }
+        }
 
-        return (fromNames + fromAmounts)
+        // The same sum on the same rhythm under names that never agree.
+        for (cluster in buildAmountClusters(rows.filterNot { it.expenseId in claimed })) {
+            val candidate = cluster.toCandidate(now, MatchBasis.AMOUNT, minOccurrences = 3) ?: continue
+            found += candidate
+            claimed += cluster.rows.map { it.expenseId }
+        }
+
+        return found
             .filterNot { candidate -> isAlreadyTracked(candidate, existing) }
             .filterNot { candidate -> isStillDismissed(candidate, dismissed) }
             .sortedByDescending { it.confidence }
@@ -198,10 +234,17 @@ object RecurringDetector {
      * value of this pass is that identical sums arriving on a schedule are hard
      * to produce by chance.
      *
-     * The cadence fit is what makes it safe. Two different ₹500 subscriptions
-     * both billing monthly would land here together, but their combined series
-     * has two payments a month and fits no cadence at all, so it is rejected
-     * rather than merged into one wrong commitment.
+     * Strictly limited to a handful of payees, and that limit is what keeps it
+     * honest. The case this serves is one commitment written down two ways, so
+     * two names is the most it can legitimately need. Without the limit it
+     * pooled payments to genuinely different people who happened to be paid the
+     * same round figure a month or so apart, and presented them as a commitment
+     * under whichever name was most recent — reporting a one-off ₹3,000 to a
+     * friend as a monthly obligation.
+     *
+     * The cadence fit helps too. Two different ₹500 subscriptions both billing
+     * monthly have two payments a month between them and fit no cadence at all,
+     * so the pair is rejected rather than merged.
      */
     private fun buildAmountClusters(rows: List<ExpenseTimeSeriesRow>): List<Cluster> =
         rows
@@ -209,6 +252,12 @@ object RecurringDetector {
             .groupBy { row -> AmountKey(row.currency, (row.amount * 100).roundToLong()) }
             .values
             .filter { it.size >= RecurringCadence.MONTHLY.minimumOccurrences() }
+            .filter { grouped ->
+                grouped
+                    .map { MerchantNormalizer.normalize(it.merchant).lowercase() }
+                    .distinct()
+                    .size <= MAX_ANCHORED_PAYEES
+            }
             .map { grouped ->
                 val first = grouped.first()
                 Cluster(
@@ -247,10 +296,15 @@ object RecurringDetector {
 
     // ── Cadence fitting ───────────────────────────────────────────────────────
 
-    private fun Cluster.toCandidate(now: Long, basis: MatchBasis): RecurringCandidate? {
+    private fun Cluster.toCandidate(
+        now: Long,
+        basis: MatchBasis,
+        minOccurrences: Int? = null
+    ): RecurringCandidate? {
         val occurrences = dedupeRetries(rows)
         val dates = occurrences.map { it.date }.sorted()
         if (dates.size < 2) return null
+        if (minOccurrences != null && dates.size < minOccurrences) return null
 
         val amounts = occurrences.map { it.amount }
         val mean = amounts.average()
@@ -260,7 +314,10 @@ object RecurringDetector {
         if (variation > MAX_AMOUNT_VARIATION) return null
 
         val fit = RecurringCadence.entries
-            .filter { it.isDetectable() && dates.size >= it.minimumOccurrences() }
+            .filter {
+                it.isDetectable() &&
+                    dates.size >= maxOf(it.minimumOccurrences(), minOccurrences ?: 0)
+            }
             .mapNotNull { cadence -> fitCadence(cadence, dates) }
             .filter { it.isFresh(dates.last(), now) }
             .maxByOrNull { it.regularity - it.skips * 0.1 }
@@ -433,6 +490,20 @@ object RecurringDetector {
             rows += other.rows
             rows.sortBy { it.date }
         }
+
+        /**
+         * This payee's spending, split into the exact sums that recur.
+         *
+         * The identity carries the amount, so a payee with two separate
+         * subscriptions yields two commitments rather than one that overwrites
+         * the other — and so a dismissal of one does not silence the other.
+         */
+        fun splitByExactAmount(): List<Cluster> = rows
+            .groupBy { (it.amount * 100).roundToLong() }
+            .filter { (_, group) -> group.size >= RecurringCadence.MONTHLY.minimumOccurrences() }
+            .map { (paise, group) ->
+                Cluster(identity = "$identity#$paise", rows = group.toMutableList())
+            }
     }
 
     private data class CadenceFit(

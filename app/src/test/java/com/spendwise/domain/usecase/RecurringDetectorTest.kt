@@ -588,6 +588,113 @@ class RecurringDetectorTest {
         assertEquals(1, found.size)
     }
 
+    // ── A subscription hiding among the same payee's other spending ───────────
+
+    /**
+     * The miss that mattered most. A merchant you both subscribe to and shop at
+     * produces one cluster holding a ₹299 monthly charge and a pile of unrelated
+     * purchases. Judged as a whole it fits no cadence and its amounts vary
+     * hugely, so the cluster was rejected — and the subscription inside it went
+     * down with the shopping.
+     */
+    @Test
+    fun `a fixed subscription is found among the same payee's ordinary purchases`() {
+        val latest = today.minusDays(2)
+        val subscription = (0 until 5).map { back ->
+            row("Amazon", latest.minusMonths(back.toLong()), 299.0, category = ExpenseCategory.Shopping)
+        }
+        val shopping = listOf(
+            row("Amazon", today.minusDays(4), 2_340.0, category = ExpenseCategory.Shopping),
+            row("Amazon", today.minusDays(11), 875.0, category = ExpenseCategory.Shopping),
+            row("Amazon", today.minusDays(19), 4_120.0, category = ExpenseCategory.Shopping),
+            row("Amazon", today.minusDays(23), 610.0, category = ExpenseCategory.Shopping),
+            row("Amazon", today.minusDays(40), 1_990.0, category = ExpenseCategory.Shopping)
+        )
+
+        val found = detect(subscription + shopping)
+
+        assertEquals(1, found.size)
+        assertEquals(299.0, found.single().averageAmount, 0.01)
+        assertEquals(RecurringCadence.MONTHLY, found.single().cadence)
+        assertEquals(5, found.single().occurrenceCount)
+
+        // Found by name, not by pooling sums from payees that disagree — every
+        // one of these payments is to the same payee. The distinction is not
+        // cosmetic: an amount-anchored match is capped at low confidence and
+        // tells the user the names differ, which here would be untrue.
+        assertEquals(MatchBasis.NAME, found.single().basis)
+        assertTrue("confidence was ${found.single().confidence}", found.single().confidence > 0.65)
+    }
+
+    /** Two subscriptions to one payee are two commitments, not one overwriting the other. */
+    @Test
+    fun `one payee can yield two separate subscriptions`() {
+        val latest = today.minusDays(2)
+        val rows = (0 until 4).flatMap { back ->
+            listOf(
+                row("Google", latest.minusMonths(back.toLong()), 130.0),
+                row("Google", latest.minusDays(12).minusMonths(back.toLong()), 1_950.0)
+            )
+        }
+
+        val found = detect(rows)
+
+        assertEquals(2, found.size)
+        assertEquals(setOf(130.0, 1_950.0), found.map { it.averageAmount }.toSet())
+        assertTrue("both are the same payee", found.all { it.basis == MatchBasis.NAME })
+    }
+
+    /** The shopping must not come back as a commitment of its own. */
+    @Test
+    fun `irregular purchases at that payee are still left alone`() {
+        val rows = listOf(
+            row("Amazon", today.minusDays(4), 2_340.0),
+            row("Amazon", today.minusDays(11), 875.0),
+            row("Amazon", today.minusDays(19), 4_120.0),
+            row("Amazon", today.minusDays(23), 610.0)
+        )
+
+        assertTrue(detect(rows).isEmpty())
+    }
+
+    // ── Not pooling strangers who were paid the same ──────────────────────────
+
+    /**
+     * The false positive this produced in real use: three separate people paid
+     * the same round figure a month or so apart were pooled into one commitment
+     * and shown under whichever name was most recent — reporting a one-off
+     * ₹3,000 to a friend as a monthly obligation.
+     */
+    @Test
+    fun `the same sum paid to three different people is not a commitment`() {
+        val latest = today.minusDays(3)
+        val rows = listOf(
+            row("Riya", latest, 3_000.0, category = ExpenseCategory.Other),
+            row("Ankit", latest.minusMonths(1), 3_000.0, category = ExpenseCategory.Other),
+            row("Meera", latest.minusMonths(2), 3_000.0, category = ExpenseCategory.Other)
+        )
+
+        assertTrue(detect(rows).isEmpty())
+    }
+
+    /** But one commitment written two ways is still exactly what it serves. */
+    @Test
+    fun `two spellings of one payee still pool`() {
+        val latest = today.minusDays(4)
+        val rows = listOf(
+            row("Car EMI", latest.minusMonths(2), 18_500.0, category = ExpenseCategory.Other),
+            row("HDFC BANK LTD EMI 8829", latest.minusMonths(1), 18_500.0,
+                nature = TransactionNature.LoanRepayment, category = ExpenseCategory.Other),
+            row("HDFC BANK LTD EMI 8829", latest, 18_500.0,
+                nature = TransactionNature.LoanRepayment, category = ExpenseCategory.Other)
+        )
+
+        val found = detect(rows)
+
+        assertEquals(1, found.size)
+        assertEquals(MatchBasis.AMOUNT, found.single().basis)
+    }
+
     @Test
     fun `occurrences carry the expense ids that produced them`() {
         val rows = monthly("Netflix", months = 4, amount = 649.0)
