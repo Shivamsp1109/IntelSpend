@@ -15,11 +15,13 @@ import com.spendwise.domain.model.RecurringStatus
 import com.spendwise.domain.model.RecurringType
 import com.spendwise.domain.model.TransactionNature
 import com.spendwise.domain.model.monthlyEquivalent
+import com.spendwise.domain.usecase.AnswerPriceChangeUseCase
 import com.spendwise.domain.usecase.ConfirmRecurringCandidateUseCase
 import com.spendwise.domain.usecase.DetectRecurringPaymentsUseCase
 import com.spendwise.domain.usecase.DismissRecurringCandidateUseCase
 import com.spendwise.domain.usecase.ReconcileRecurringPaymentsUseCase
 import com.spendwise.domain.usecase.UpdateRecurringStatusUseCase
+import com.spendwise.util.CurrencyFormatter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +46,7 @@ class RecurringViewModel @Inject constructor(
     private val confirmRecurringCandidate: ConfirmRecurringCandidateUseCase,
     private val dismissRecurringCandidate: DismissRecurringCandidateUseCase,
     private val updateRecurringStatus: UpdateRecurringStatusUseCase,
+    private val answerPriceChange: AnswerPriceChangeUseCase,
     private val reconcileRecurringPayments: ReconcileRecurringPaymentsUseCase,
     detectRecurringPayments: DetectRecurringPaymentsUseCase
 ) : ViewModel() {
@@ -90,6 +93,22 @@ class RecurringViewModel @Inject constructor(
         viewModelScope.launch {
             dismissRecurringCandidate(candidate)
             _message.value = "Ignored ${candidate.merchant}."
+        }
+    }
+
+    fun acceptPriceChange(entry: RecurringEntry) {
+        viewModelScope.launch {
+            val newAmount = entry.pendingAmount ?: return@launch
+            answerPriceChange.accept(entry)
+            _message.value =
+                "${entry.title} is now ${CurrencyFormatter.format(newAmount, entry.currency)}."
+        }
+    }
+
+    fun keepExistingPrice(entry: RecurringEntry) {
+        viewModelScope.launch {
+            answerPriceChange.keepExisting(entry)
+            _message.value = "Kept ${entry.title} at its current amount."
         }
     }
 

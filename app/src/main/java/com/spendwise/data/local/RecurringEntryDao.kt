@@ -125,6 +125,33 @@ interface RecurringEntryDao {
         additionalOccurrences: Int
     )
 
+    /** Commitments with a price change waiting for an answer. */
+    @Query("SELECT * FROM recurring WHERE status = 'ACTIVE' AND pendingAmount IS NOT NULL")
+    suspend fun getWithPendingPriceChange(): List<RecurringEntity>
+
+    @Query("UPDATE recurring SET pendingAmount = :amount WHERE id = :id")
+    suspend fun setPendingAmount(id: Int, amount: Double?)
+
+    /**
+     * Takes the new price. The commitment's amount becomes it, and any earlier
+     * refusal is cleared — the user has now agreed to this figure.
+     */
+    @Query(
+        """
+        UPDATE recurring
+        SET amount = :amount, pendingAmount = NULL, declinedAmount = NULL, isSynced = 0
+        WHERE id = :id
+        """
+    )
+    suspend fun applyPendingAmount(id: Int, amount: Double)
+
+    /**
+     * Keeps the agreed amount and remembers the refusal, so the same change is
+     * not put to the user again every time another payment arrives at it.
+     */
+    @Query("UPDATE recurring SET pendingAmount = NULL, declinedAmount = :amount WHERE id = :id")
+    suspend fun declinePendingAmount(id: Int, amount: Double)
+
     // ── Dismissed detection candidates ────────────────────────────────────────
 
     @Query("SELECT * FROM dismissed_recurring_candidates")

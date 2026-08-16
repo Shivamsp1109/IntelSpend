@@ -19,7 +19,9 @@ data class RecurringSyncPayload(
     val status: String,
     val lastOccurrenceDate: Long?,
     val nextDueDate: Long?,
-    val dueDayOfMonth: Int?
+    val dueDayOfMonth: Int?,
+    val pendingAmount: Double?,
+    val declinedAmount: Double?
 )
 
 /** One payment, and the commitment it settled. */
@@ -105,7 +107,9 @@ fun RecurringEntity.toSyncPayload(uid: String): RecurringSyncPayload = Recurring
     status = status,
     lastOccurrenceDate = lastOccurrenceDate,
     nextDueDate = nextDueDate,
-    dueDayOfMonth = dueDayOfMonth
+    dueDayOfMonth = dueDayOfMonth,
+    pendingAmount = pendingAmount,
+    declinedAmount = declinedAmount
 )
 
 /** See RestoreFromServerUseCase for why the id and sync flag are set this way. */
@@ -125,7 +129,9 @@ fun RecurringSyncPayload.toRestoredEntity() = RecurringEntity(
     status = status,
     lastOccurrenceDate = lastOccurrenceDate,
     nextDueDate = nextDueDate,
-    dueDayOfMonth = dueDayOfMonth
+    dueDayOfMonth = dueDayOfMonth,
+    pendingAmount = pendingAmount,
+    declinedAmount = declinedAmount
 )
 
 fun RecurringDismissalRow.toRestoredEntity() = DismissedRecurringCandidateEntity(

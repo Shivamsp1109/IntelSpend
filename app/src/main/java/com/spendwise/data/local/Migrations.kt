@@ -373,6 +373,28 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
  * reset is a calendar question — a budget starts afresh on the 1st however few
  * days have passed since the last alert.
  */
+/**
+ * Room migration from schema version 12 → 13.
+ *
+ * Lets a commitment hold a price change without applying it.
+ *
+ * The amount on a commitment is a figure the user agreed to, and it decides what
+ * the app tells them they owe each month. When reconciliation sees a payment
+ * that disagrees with it — a subscription that has gone up — overwriting it
+ * would silently change a number they had confirmed. So the new figure is parked
+ * in [pendingAmount] and put to them instead.
+ *
+ * [declinedAmount] remembers a change they refused. Without it, refusing would
+ * last exactly until the next payment arrived at that price and the same
+ * question would be asked every month.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `pendingAmount` REAL")
+        db.execSQL("ALTER TABLE `recurring` ADD COLUMN `declinedAmount` REAL")
+    }
+}
+
 val MIGRATION_11_12 = object : Migration(11, 12) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

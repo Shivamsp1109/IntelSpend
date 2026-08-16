@@ -37,8 +37,10 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         last_occurrence_date,
         next_due_date,
         due_day_of_month,
+        pending_amount,
+        declined_amount,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         title                = VALUES(title),
         amount               = VALUES(amount),
@@ -54,6 +56,8 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         last_occurrence_date = VALUES(last_occurrence_date),
         next_due_date        = VALUES(next_due_date),
         due_day_of_month     = VALUES(due_day_of_month),
+        pending_amount       = VALUES(pending_amount),
+        declined_amount      = VALUES(declined_amount),
         updated_at           = VALUES(updated_at)`,
       [
         req.user.uid,
@@ -76,6 +80,8 @@ router.post('/sync', requireFirebaseAuth, requireSameUser, syncLimiter, async (r
         nullableNumber(entry.lastOccurrenceDate),
         nullableNumber(entry.nextDueDate),
         nullableNumber(entry.dueDayOfMonth),
+        nullableNumber(entry.pendingAmount),
+        nullableNumber(entry.declinedAmount),
         Date.now()
       ]
     );
@@ -163,7 +169,9 @@ router.get('/', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
               status,
               last_occurrence_date AS lastOccurrenceDate,
               next_due_date        AS nextDueDate,
-              due_day_of_month     AS dueDayOfMonth
+              due_day_of_month     AS dueDayOfMonth,
+              pending_amount       AS pendingAmount,
+              declined_amount      AS declinedAmount
          FROM recurring
         WHERE uid = ? AND local_id > ?
         ORDER BY local_id ASC

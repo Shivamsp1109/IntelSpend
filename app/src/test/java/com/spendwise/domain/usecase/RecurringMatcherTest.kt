@@ -403,6 +403,39 @@ class RecurringMatcherTest {
         assertTrue(matches.isEmpty())
     }
 
+    // ── A tracked commitment whose price moved ────────────────────────────────
+
+    /**
+     * Settling still works when the charge has changed — otherwise a
+     * subscription that went up would stop being recognised at exactly the point
+     * the user most needs to hear about it, and would go on reminding them for a
+     * bill they had already paid.
+     */
+    @Test
+    fun `a payment at a new price still settles the commitment`() {
+        val netflix = entry(title = "Netflix", amount = 649.0, type = RecurringType.FIXED)
+
+        val matches = RecurringMatcher.match(
+            listOf(netflix),
+            listOf(payment(merchant = "Netflix", amount = 699.0))
+        )
+
+        assertEquals(1, matches.size)
+    }
+
+    /** Far enough out that it is a different charge, not a price rise. */
+    @Test
+    fun `a wildly different amount from the same payee is not attributed`() {
+        val netflix = entry(title = "Netflix", amount = 649.0, type = RecurringType.FIXED)
+
+        val matches = RecurringMatcher.match(
+            listOf(netflix),
+            listOf(payment(merchant = "Netflix", amount = 12_000.0))
+        )
+
+        assertTrue(matches.isEmpty())
+    }
+
     @Test
     fun `the projected date uses calendar arithmetic`() {
         val monthEnd = entry(

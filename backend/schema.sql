@@ -117,6 +117,11 @@ CREATE TABLE IF NOT EXISTS recurring (
     -- commitment due on the 31st is paid on the 28th in February, and projecting
     -- from that date would walk it backwards through the calendar for good.
     due_day_of_month     INT DEFAULT NULL,
+    -- A charge seen that disagrees with the agreed amount, awaiting the user's
+    -- answer, and one they have already refused. Held rather than applied: the
+    -- amount is a figure they confirmed and decides what they are told they owe.
+    pending_amount       DOUBLE DEFAULT NULL,
+    declined_amount      DOUBLE DEFAULT NULL,
     updated_at BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_recurring (uid, local_id),
     CONSTRAINT fk_recurring_user
@@ -263,3 +268,5 @@ CREATE TABLE IF NOT EXISTS llm_usage (
 -- ALTER TABLE recurring ADD COLUMN last_occurrence_date BIGINT DEFAULT NULL;
 -- ALTER TABLE recurring ADD COLUMN next_due_date BIGINT DEFAULT NULL;
 -- ALTER TABLE recurring ADD COLUMN due_day_of_month INT DEFAULT NULL;
+-- ALTER TABLE recurring ADD COLUMN pending_amount DOUBLE DEFAULT NULL;
+-- ALTER TABLE recurring ADD COLUMN declined_amount DOUBLE DEFAULT NULL;

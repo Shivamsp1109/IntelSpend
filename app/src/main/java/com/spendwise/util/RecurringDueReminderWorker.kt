@@ -42,6 +42,8 @@ class RecurringDueReminderWorker @AssistedInject constructor(
         runCatching { reconcileRecurringPayments() }
             .onFailure { Log.w(TAG, "Could not reconcile before reminding.", it) }
 
+        notePriceChanges()
+
         val now = System.currentTimeMillis()
         val window = now + TimeUnit.DAYS.toMillis(RecurringReminderPolicy.LEAD_DAYS)
 
@@ -79,6 +81,48 @@ class RecurringDueReminderWorker @AssistedInject constructor(
         return Result.success()
     }
 
+    /**
+     * Tells the user a tracked charge has changed, without changing it.
+     *
+     * A subscription quietly going up is one of the few things in this feature
+     * anybody would act on, and it is invisible in a figure that silently
+     * updated itself. Its own notification because it is a question rather than
+     * a reminder — the answer lives on the screen it links to.
+     */
+    private suspend fun notePriceChanges() {
+        val changed = runCatching { recurringEntryDao.getWithPendingPriceChange() }
+            .getOrElse {
+                Log.w(TAG, "Could not read price changes.", it)
+                return
+            }
+            .map { it.toDomain() }
+            .filter { it.pendingAmount != null }
+
+        if (changed.isEmpty()) return
+
+        val text = changed.joinToString("\n") { entry ->
+            val from = CurrencyFormatter.format(entry.amount, entry.currency)
+            val to = CurrencyFormatter.format(entry.pendingAmount!!, entry.currency)
+            val direction = if (entry.pendingAmount!! > entry.amount) "up" else "down"
+            "${entry.title} · $from → $to ($direction)"
+        }
+
+        RecurringNotifications.show(
+            context = context,
+            id = PRICE_CHANGE_NOTIFICATION_ID,
+            notification = RecurringNotifications.build(
+                context = context,
+                channelId = RecurringNotifications.DUE_CHANNEL_ID,
+                title = if (changed.size == 1) {
+                    "${changed.first().title} has changed price"
+                } else {
+                    "${changed.size} payments have changed price"
+                },
+                text = "$text\n\nOpen to accept the new amount or keep the old one."
+            )
+        )
+    }
+
     private fun title(due: List<RecurringEntry>): String =
         if (due.size == 1) "${due.first().title} is due soon"
         else "${due.size} payments due soon"
@@ -98,5 +142,8 @@ class RecurringDueReminderWorker @AssistedInject constructor(
 
     private companion object {
         const val TAG = "RecurringDueReminder"
+
+        /** Its own id, so a price question does not replace a due reminder. */
+        const val PRICE_CHANGE_NOTIFICATION_ID = 2004
     }
 }

@@ -42,8 +42,22 @@ data class RecurringEntry(
      * the next date from *that* would leave it stuck on the 28th for good —
      * one short month would permanently walk it backwards through the calendar.
      */
-    val dueDayOfMonth: Int? = null
+    val dueDayOfMonth: Int? = null,
+    /**
+     * A price seen on a recent payment that disagrees with [amount], waiting on
+     * the user.
+     *
+     * Deliberately not applied on its own. [amount] is a figure they agreed to
+     * and it decides what the app says they owe each month; a charge that
+     * disagrees is a question, not a correction to make for them.
+     */
+    val pendingAmount: Double? = null,
+    /** A change already refused, so the same question is not asked every month. */
+    val declinedAmount: Double? = null
 ) {
     /** Whether this should be counted in commitments and reminded about now. */
     val isLive: Boolean get() = status.isLive
+
+    /** Whether there is a price change waiting for an answer. */
+    val hasPendingPriceChange: Boolean get() = pendingAmount != null
 }

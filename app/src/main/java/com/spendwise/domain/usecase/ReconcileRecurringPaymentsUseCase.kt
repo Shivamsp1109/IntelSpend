@@ -5,7 +5,9 @@ import com.spendwise.data.local.ExpenseDao
 import com.spendwise.data.local.RecurringEntryDao
 import com.spendwise.data.local.RecurringExpenseCrossRef
 import com.spendwise.data.local.toDomain
+import com.spendwise.domain.model.RecurringType
 import javax.inject.Inject
+import kotlin.math.abs
 
 /**
  * Brings every tracked commitment up to date with the payments that have
@@ -43,6 +45,7 @@ class ReconcileRecurringPaymentsUseCase @Inject constructor(
                     nextDueDate = match.nextDueDate,
                     additionalOccurrences = match.expenseIds.size
                 )
+                notePriceChange(match, unlinked)
             }.onFailure {
                 Log.w(TAG, "Could not reconcile ${match.entry.title}.", it)
             }
@@ -51,7 +54,51 @@ class ReconcileRecurringPaymentsUseCase @Inject constructor(
         return matches.sumOf { it.expenseIds.size }
     }
 
+    /**
+     * Parks a charge that disagrees with the agreed amount, rather than adopting
+     * it.
+     *
+     * The amount on a commitment is a figure the user confirmed, and it is what
+     * the app uses to say what they owe each month. A payment that comes in
+     * higher is worth knowing about — a subscription going up is one of the few
+     * things here anybody would act on — but it is a question to put to them,
+     * not a correction to make on their behalf.
+     *
+     * Only for fixed commitments. On a variable one the amount is expected to
+     * move, and every bill would raise a question about nothing.
+     */
+    private suspend fun notePriceChange(
+        match: RecurringMatch,
+        unlinked: List<com.spendwise.data.local.ExpenseTimeSeriesRow>
+    ) {
+        val entry = match.entry
+        if (entry.type != RecurringType.FIXED) return
+
+        // The newest payment attributed in this pass is the current charge.
+        val latest = unlinked
+            .filter { it.expenseId in match.expenseIds }
+            .maxByOrNull { it.date }
+            ?.amount
+            ?: return
+
+        if (isSameCharge(latest, entry.amount)) return
+        // Already asked and refused; asking again every month is nagging.
+        if (entry.declinedAmount?.let { isSameCharge(latest, it) } == true) return
+        if (entry.pendingAmount?.let { isSameCharge(latest, it) } == true) return
+
+        recurringEntryDao.setPendingAmount(entry.id, latest)
+    }
+
+    private fun isSameCharge(first: Double, second: Double): Boolean {
+        val larger = maxOf(abs(first), abs(second))
+        if (larger == 0.0) return true
+        return abs(first - second) / larger <= SAME_CHARGE_TOLERANCE
+    }
+
     private companion object {
         const val TAG = "ReconcileRecurring"
+
+        /** Rounding and the odd paisa of proration, not a price change. */
+        const val SAME_CHARGE_TOLERANCE = 0.02
     }
 }

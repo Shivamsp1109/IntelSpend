@@ -66,7 +66,9 @@ const REQUIRED_COLUMNS = [
   { table: 'recurring', column: 'status', definition: "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'" },
   { table: 'recurring', column: 'last_occurrence_date', definition: 'BIGINT DEFAULT NULL' },
   { table: 'recurring', column: 'next_due_date', definition: 'BIGINT DEFAULT NULL' },
-  { table: 'recurring', column: 'due_day_of_month', definition: 'INT DEFAULT NULL' }
+  { table: 'recurring', column: 'due_day_of_month', definition: 'INT DEFAULT NULL' },
+  { table: 'recurring', column: 'pending_amount', definition: 'DOUBLE DEFAULT NULL' },
+  { table: 'recurring', column: 'declined_amount', definition: 'DOUBLE DEFAULT NULL' }
 ];
 
 /**

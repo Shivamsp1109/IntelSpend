@@ -59,7 +59,23 @@ data class RecurringEntity(
     val lastOccurrenceDate: Long? = null,
     val nextDueDate: Long? = null,
     /** See [RecurringEntry.dueDayOfMonth] for why this is stored rather than derived. */
-    val dueDayOfMonth: Int? = null
+    val dueDayOfMonth: Int? = null,
+    /**
+     * A new price seen on a payment, waiting for the user to accept or refuse it.
+     *
+     * Held rather than applied. The amount is a figure the user agreed to, and it
+     * decides what the app says they owe each month — so a charge that disagrees
+     * with it is a question to put to them, not a correction to make on their
+     * behalf. Null when there is nothing to ask about.
+     */
+    val pendingAmount: Double? = null,
+    /**
+     * A price change the user was shown and chose not to take.
+     *
+     * Kept so the same question is not asked every month. Without it, refusing a
+     * change would last exactly until the next payment arrived at that figure.
+     */
+    val declinedAmount: Double? = null
 )
 
 fun RecurringEntity.toDomain(): RecurringEntry = RecurringEntry(
@@ -77,7 +93,9 @@ fun RecurringEntity.toDomain(): RecurringEntry = RecurringEntry(
     status = RecurringStatus.fromName(status),
     lastOccurrenceDate = lastOccurrenceDate,
     nextDueDate = nextDueDate,
-    dueDayOfMonth = dueDayOfMonth
+    dueDayOfMonth = dueDayOfMonth,
+    pendingAmount = pendingAmount,
+    declinedAmount = declinedAmount
 )
 
 fun RecurringEntry.toEntity(): RecurringEntity = RecurringEntity(
@@ -95,7 +113,9 @@ fun RecurringEntry.toEntity(): RecurringEntity = RecurringEntity(
     status = status.name,
     lastOccurrenceDate = lastOccurrenceDate,
     nextDueDate = nextDueDate,
-    dueDayOfMonth = dueDayOfMonth
+    dueDayOfMonth = dueDayOfMonth,
+    pendingAmount = pendingAmount,
+    declinedAmount = declinedAmount
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

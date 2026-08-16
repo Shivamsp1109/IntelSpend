@@ -216,7 +216,9 @@ fun RecurringScreen(
                             entry = entry,
                             onEdit = { editing = RecurringDraft.from(entry) },
                             onStatus = { viewModel.setStatus(entry, it) },
-                            onDelete = { viewModel.delete(entry) }
+                            onDelete = { viewModel.delete(entry) },
+                            onAcceptPrice = { viewModel.acceptPriceChange(entry) },
+                            onKeepPrice = { viewModel.keepExistingPrice(entry) }
                         )
                     }
                 }
@@ -304,7 +306,9 @@ private fun TrackedCard(
     entry: RecurringEntry,
     onEdit: () -> Unit,
     onStatus: (RecurringStatus) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onAcceptPrice: () -> Unit = {},
+    onKeepPrice: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -364,6 +368,27 @@ private fun TrackedCard(
                 }
                 Spacer(Modifier.width(12.dp))
                 Amount(CurrencyFormatter.format(entry.amount, entry.currency))
+            }
+
+            // Asked, not applied. The amount is a figure the user agreed to and
+            // it decides what the app says they owe, so a charge that disagrees
+            // with it is put to them rather than written over the top.
+            entry.pendingAmount?.let { proposed ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Last payment was ${CurrencyFormatter.format(proposed, entry.currency)}, " +
+                        "not ${CurrencyFormatter.format(entry.amount, entry.currency)}.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = SpendWiseOrange
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = onAcceptPrice) {
+                        Text("Update to ${CurrencyFormatter.format(proposed, entry.currency)}")
+                    }
+                    TextButton(onClick = onKeepPrice) {
+                        Text("Keep", color = SpendWiseTextMuted)
+                    }
+                }
             }
 
             Spacer(Modifier.height(6.dp))
