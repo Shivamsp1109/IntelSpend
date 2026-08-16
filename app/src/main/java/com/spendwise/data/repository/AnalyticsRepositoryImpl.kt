@@ -13,6 +13,7 @@ import com.spendwise.domain.model.MerchantSpend
 import com.spendwise.domain.model.SpendingSummary
 import com.spendwise.domain.model.TimeBucket
 import com.spendwise.domain.model.TimeBuckets
+import com.spendwise.domain.model.TransactionNature
 import com.spendwise.domain.repository.AnalyticsRepository
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -65,6 +66,26 @@ class AnalyticsRepositoryImpl @Inject constructor(
             previousIncome = previousIncome,
             transactionCount = count
         )
+    }
+
+    /**
+     * Unrecognised nature labels are dropped rather than folded into Spending.
+     * `fromName` defaults that way for a single transaction, where guessing is
+     * better than losing the row, but doing it here would quietly inflate the
+     * consumption figure the whole assessment rests on.
+     */
+    override suspend fun totalsByNature(
+        period: AnalyticsPeriod,
+        currency: Currency
+    ): Map<TransactionNature, Double> {
+        val range = period.range()
+        return analyticsDao.totalsByNature(range.start, range.end, currency.code)
+            .mapNotNull { row ->
+                TransactionNature.entries
+                    .firstOrNull { it.name.equals(row.label, ignoreCase = true) }
+                    ?.let { it to row.total }
+            }
+            .toMap()
     }
 
     override suspend fun spendOverTime(

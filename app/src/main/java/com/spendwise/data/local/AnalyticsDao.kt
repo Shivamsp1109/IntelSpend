@@ -61,6 +61,30 @@ interface AnalyticsDao {
     )
     suspend fun expenseCount(start: Long, end: Long, currency: String): Int
 
+    /**
+     * Every nature's total for the period, not just spending.
+     *
+     * The deliberate exception to the rule above. Each other aggregate filters to
+     * `Spending` because a chart of what was consumed must not count an EMI or a
+     * transfer. The health engine asks a different question — where did the money
+     * go in total — and needs debt repayment and asset-building as their own
+     * figures rather than excluded. Grouping rather than one query per nature
+     * keeps that a single scan, and keeps the parts guaranteed to sum to the
+     * whole.
+     *
+     * `SelfTransfer` and `CreditCardPayment` come back too and the caller drops
+     * them: both move money that is counted elsewhere, and neither is a cost.
+     */
+    @Query(
+        """
+        SELECT nature AS label, SUM(amount) AS total, COUNT(*) AS count
+        FROM expenses
+        WHERE date BETWEEN :start AND :end AND currency = :currency
+        GROUP BY nature
+        """
+    )
+    suspend fun totalsByNature(start: Long, end: Long, currency: String): List<LabelTotal>
+
     // ── Time buckets ──────────────────────────────────────────────────────────
 
     @Query(

@@ -8,6 +8,7 @@ import com.spendwise.domain.model.LargestExpense
 import com.spendwise.domain.model.MerchantSpend
 import com.spendwise.domain.model.SpendingSummary
 import com.spendwise.domain.model.TimeBucket
+import com.spendwise.domain.model.TransactionNature
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 
@@ -27,7 +28,8 @@ class FakeAnalyticsRepository(
     private val income: Double = 0.0,
     private val primary: Currency = Currency.INR,
     private val others: List<Currency> = emptyList(),
-    private val rows: List<Expense> = emptyList()
+    private val rows: List<Expense> = emptyList(),
+    private val byNature: Map<TransactionNature, Double> = emptyMap()
 ) : AnalyticsRepository {
 
     var requestedCurrency: Currency? = null
@@ -51,6 +53,14 @@ class FakeAnalyticsRepository(
             transactionCount = current.size
         )
     }
+
+    /**
+     * Defaults to reporting the category total as spending, so a test that only
+     * cares about categories still gets figures that add up rather than an
+     * empty split that would make every health metric read as zero.
+     */
+    override suspend fun totalsByNature(period: AnalyticsPeriod, currency: Currency) =
+        byNature.ifEmpty { mapOf(TransactionNature.Spending to current.values.sum()) }
 
     override suspend fun spendOverTime(period: AnalyticsPeriod, currency: Currency) = buckets
 

@@ -12,6 +12,7 @@ sealed class Routes(val route: String) {
     data object Recategorise : Routes("recategorise")
     data object Recurring : Routes("recurring")
     data object Budgets : Routes("budgets")
+    data object FinancialHealth : Routes("financial_health")
     
     // We can pass the URI as a string parameter if needed, but since it can be large,
     // a simple approach is to use a global/ViewModel or pass the encoded Uri.

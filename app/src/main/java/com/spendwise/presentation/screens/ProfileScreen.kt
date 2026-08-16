@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
@@ -65,6 +66,7 @@ fun ProfileScreen(
     onFixCategories: () -> Unit = {},
     onRecurringPayments: () -> Unit = {},
     onBudgets: () -> Unit = {},
+    onFinancialHealth: () -> Unit = {},
     onLogout: () -> Unit,
     smartExtractionViewModel: SmartExtractionViewModel = hiltViewModel()
 ) {
@@ -163,6 +165,11 @@ fun ProfileScreen(
                 Icons.Default.AccountBalanceWallet,
                 "Budgets",
                 onClick = onBudgets
+            )
+            ProfileItem(
+                Icons.Default.Favorite,
+                "Financial Health",
+                onClick = onFinancialHealth
             )
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")
             ProfileItem(Icons.Default.Settings, "Settings")

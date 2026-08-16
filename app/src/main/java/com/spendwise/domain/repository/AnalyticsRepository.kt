@@ -8,6 +8,7 @@ import com.spendwise.domain.model.LargestExpense
 import com.spendwise.domain.model.MerchantSpend
 import com.spendwise.domain.model.SpendingSummary
 import com.spendwise.domain.model.TimeBucket
+import com.spendwise.domain.model.TransactionNature
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -33,6 +34,21 @@ interface AnalyticsRepository {
     suspend fun otherCurrenciesPresent(primary: Currency): List<Currency>
 
     suspend fun summary(period: AnalyticsPeriod, currency: Currency): SpendingSummary
+
+    /**
+     * What left the account in the period, split by what kind of movement it was.
+     *
+     * Separate from [summary] because that reports spending alone, as every
+     * screen in this app does. Judging financial health needs the rest: an EMI
+     * and a mutual-fund contribution are both money out, but one repays a debt
+     * and the other buys an asset, and a household with a large figure under the
+     * second is in a very different position to one with a large figure under
+     * the first.
+     */
+    suspend fun totalsByNature(
+        period: AnalyticsPeriod,
+        currency: Currency
+    ): Map<TransactionNature, Double>
 
     suspend fun spendOverTime(period: AnalyticsPeriod, currency: Currency): List<TimeBucket>
 
