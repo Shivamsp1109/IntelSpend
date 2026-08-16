@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -70,7 +71,13 @@ class AnalyticsViewModel @Inject constructor(
             // or importing a transaction refreshes the figures behind the user.
             combine(period, currencyOverride, analyticsRepository.changes()) { selected, currency, _ ->
                 selected to currency
-            }.collectLatest { (selected, currency) -> load(selected, currency) }
+            }
+                // Settled first. A sync writes a great many rows in quick
+                // succession and every one re-emits, so without this the whole
+                // set of aggregates was started and abandoned once per row —
+                // hundreds of times over a large import, for one usable result.
+                .debounce(SETTLE_MILLIS)
+                .collectLatest { (selected, currency) -> load(selected, currency) }
         }
     }
 
@@ -277,8 +284,12 @@ data class AnalyticsUiState(
         get() = snapshot != null &&
             snapshot.summary.transactionCount == 0 &&
             snapshot.summary.totalIncome == 0.0
+
 }
 
 data class PendingShare(val uri: Uri, val format: ReportFormat)
 
 private const val TAG = "AnalyticsViewModel"
+
+/** Long enough to let a burst of writes finish, short enough to still feel live. */
+private const val SETTLE_MILLIS = 300L

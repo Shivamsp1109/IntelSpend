@@ -8,6 +8,8 @@ import com.spendwise.data.local.toDomain
 import com.spendwise.domain.model.RecurringType
 import javax.inject.Inject
 import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Brings every tracked commitment up to date with the payments that have
@@ -30,7 +32,13 @@ class ReconcileRecurringPaymentsUseCase @Inject constructor(
         if (entries.isEmpty()) return 0
 
         val unlinked = expenseDao.getUnlinkedExpenses()
-        val matches = RecurringMatcher.match(entries, unlinked)
+        // Matching compares every live commitment against every unattributed
+        // payment, which after an import is a large multiplication. Callers
+        // include a view model, whose scope runs on the main dispatcher, so
+        // leaving it there would freeze the screen that started it.
+        val matches = withContext(Dispatchers.Default) {
+            RecurringMatcher.match(entries, unlinked)
+        }
 
         for (match in matches) {
             runCatching {

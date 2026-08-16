@@ -57,6 +57,17 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE isSynced = 0 ORDER BY date ASC")
     suspend fun getPendingSync(): List<ExpenseEntity>
 
+    /**
+     * Marks a batch of rows as uploaded in one statement.
+     *
+     * One write rather than one per row. Every update invalidates the expenses
+     * table and everything observing it recomputes, so marking a long import
+     * row by row put the app through hundreds of rounds of that while the upload
+     * was still running.
+     */
+    @Query("UPDATE expenses SET isSynced = 1 WHERE id IN (:ids)")
+    suspend fun markSynced(ids: List<Int>)
+
     /** Whether this device holds anything yet; gates restore-from-server. */
     @Query("SELECT COUNT(*) FROM expenses")
     suspend fun countExpenses(): Int

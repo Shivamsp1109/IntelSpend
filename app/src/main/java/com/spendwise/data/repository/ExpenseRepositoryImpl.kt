@@ -69,14 +69,45 @@ class ExpenseRepositoryImpl @Inject constructor(
         }
     }
 
+    /**
+     * Pushes everything waiting, and does not stop at the first thing that fails.
+     *
+     * This loop used to let a failure escape it. One row the server rejected —
+     * a malformed field, a transient 500 — aborted the whole upload, and since
+     * the sweep catches the exception and moves on to incomes, every expense
+     * behind that row was skipped. The next attempt reached the same row and
+     * stopped in the same place, so a single bad transaction could hold back an
+     * unbounded number of good ones indefinitely.
+     *
+     * The successes are marked in one write rather than one write each. Every
+     * update invalidates the expenses table, and everything observing it —
+     * analytics, the recurring detector, the transaction list — recomputes on
+     * each one. Marking two hundred rows individually meant two hundred rounds
+     * of that during a single sync, which is what made the app stop responding
+     * while a large import was going up.
+     */
     override suspend fun syncPendingExpenses() {
-        dao.getPendingSync().forEach { entity ->
-            remoteDataSource.upsertExpense(entity)
-            dao.updateExpense(entity.copy(isSynced = true))
+        val uploaded = mutableListOf<Int>()
+
+        for (entity in dao.getPendingSync()) {
+            runCatching { remoteDataSource.upsertExpense(entity) }
+                .onSuccess { uploaded += entity.id }
+                .onFailure { Log.w(TAG, "Failed to sync expense id=${entity.id}; will retry.", it) }
+
+            if (uploaded.size >= MARK_SYNCED_BATCH) {
+                dao.markSynced(uploaded.toList())
+                uploaded.clear()
+            }
         }
-        dao.getPendingDeleteSync().forEach { delete ->
-            remoteDataSource.deleteExpense(delete.localId)
-            dao.deletePendingDelete(delete.localId)
+        if (uploaded.isNotEmpty()) dao.markSynced(uploaded)
+
+        for (delete in dao.getPendingDeleteSync()) {
+            runCatching {
+                remoteDataSource.deleteExpense(delete.localId)
+                dao.deletePendingDelete(delete.localId)
+            }.onFailure {
+                Log.w(TAG, "Failed to sync delete for localId=${delete.localId}; will retry.", it)
+            }
         }
     }
 
@@ -92,5 +123,15 @@ class ExpenseRepositoryImpl @Inject constructor(
 
     private companion object {
         const val TAG = "ExpenseRepository"
+
+        /**
+         * Rows marked synced per write.
+         *
+         * Small enough that a process killed mid-sweep re-uploads only a handful
+         * — which is harmless, the upsert is keyed on the row's own id — and
+         * large enough that a long import costs a few invalidations rather than
+         * one per transaction.
+         */
+        const val MARK_SYNCED_BATCH = 50
     }
 }
