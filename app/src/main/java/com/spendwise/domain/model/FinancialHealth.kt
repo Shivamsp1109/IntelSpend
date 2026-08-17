@@ -1,13 +1,25 @@
 package com.spendwise.domain.model
 
 /**
- * What the app can say about a household's position for one period, computed
- * from recorded transactions and confirmed commitments alone.
+ * A cash-flow view of one period, computed on the device from what this handset
+ * holds.
  *
- * Deliberately deterministic and free of any model call. Everything here is
- * arithmetic over figures the user can see for themselves, which is what makes
- * it safe for an assistant to reason over later: a wrong number here is a bug
- * with a test, not an unpredictable answer.
+ * **Not the canonical financial assessment.** That lives on the server, reads
+ * every domain — assets, structured loans, insurance, a confirmed risk profile —
+ * and is what recommendations and the assistant reason over. This is narrower on
+ * purpose: it covers recorded transactions, confirmed commitments and goals, and
+ * it works with no network, which is the whole reason it exists.
+ *
+ * The two are related but they do not answer the same question, and nothing
+ * should treat them as interchangeable. [debtToIncomeRatio] here divides
+ * recorded loan-repayment *transactions* by income — a description of behaviour.
+ * The server's debt-service ratio divides scheduled obligations from real loan
+ * terms by income, which is what a lender means by the phrase. Both are correct;
+ * they are different figures, and presenting one as the other would misinform.
+ *
+ * Deterministic and free of any model call. Everything here is arithmetic over
+ * figures the user can see for themselves, so a wrong number is a bug with a
+ * test rather than an unpredictable answer.
  *
  * The separation this type exists to enforce is **actual against projected**.
  * A figure describing money that has already moved and a figure describing
@@ -26,6 +38,14 @@ package com.spendwise.domain.model
 data class FinancialHealthSnapshot(
     val periodLabel: String,
     val currency: Currency,
+    /**
+     * Which build of the on-device arithmetic produced this, shown alongside the
+     * figures. Two snapshots that disagree are otherwise indistinguishable from
+     * one that is simply wrong.
+     */
+    val engineVersion: String = OFFLINE_ENGINE_VERSION,
+    /** When this was worked out, so a stale screen cannot pass for a live one. */
+    val computedAt: Long = System.currentTimeMillis(),
     /**
      * Currencies present in the data but left out of every figure here. The app
      * has no exchange-rate source, so mixing them would be silently wrong; the
@@ -153,6 +173,13 @@ data class FinancialHealthSnapshot(
         get() = goals.filter { it.status.needsContribution }
             .sumOf { it.requiredMonthlyContribution }
 }
+
+/**
+ * Bumped when the on-device arithmetic changes what it produces from the same
+ * inputs, so a figure computed under an older build can be told apart from one
+ * computed now.
+ */
+const val OFFLINE_ENGINE_VERSION: String = "offline-1.0.0"
 
 /** Where a goal stands against its deadline. */
 enum class GoalStatus {

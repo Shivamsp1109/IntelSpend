@@ -39,7 +39,8 @@ class SyncWorker @AssistedInject constructor(
     private val recurringRepository: RecurringEntryRepository,
     private val reconcileRecurringPayments: ReconcileRecurringPaymentsUseCase,
     private val budgetDao: CategoryBudgetDao,
-    private val budgetDataSource: MySqlBudgetDataSource
+    private val budgetDataSource: MySqlBudgetDataSource,
+    private val syncStateStore: SyncStateStore
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -62,6 +63,11 @@ class SyncWorker @AssistedInject constructor(
             Log.w(TAG, "One or more entity syncs failed; scheduling retry.")
             Result.retry()
         } else {
+            // Only a sweep that finished with nothing left over counts. A pass
+            // that uploaded most rows and failed on one has not finished, and
+            // recording it would let a server-side assessment claim to cover
+            // data that never left the device.
+            syncStateStore.recordSuccessfulSync()
             Result.success()
         }
     }

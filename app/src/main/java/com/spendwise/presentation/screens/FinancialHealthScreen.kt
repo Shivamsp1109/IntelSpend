@@ -55,14 +55,20 @@ import com.spendwise.util.DateUtils
 import kotlin.math.roundToInt
 
 /**
- * Where the household stands this month.
+ * Where the household stands this month, worked out on the device.
  *
- * Every figure on this screen is arithmetic over transactions the user can go
- * and look at, and the caveats are shown as prominently as the numbers rather
- * than tucked at the bottom. An assessment that quietly rests on an assumption
- * — that the app's idea of "essential" matches theirs, that a currency was left
- * out — is worse than no assessment, because it invites a decision the figures
- * do not actually support.
+ * Deliberately titled as a cash-flow snapshot rather than a full assessment. It
+ * covers what this handset holds — recorded transactions, confirmed commitments,
+ * goals — and it works with no network, which is why it exists. The complete
+ * picture, taking in what the user owns, their real loan terms and their cover,
+ * is computed on the server. Letting this screen present itself as that would
+ * invite a decision on a narrower set of facts than the user would assume.
+ *
+ * Every figure is arithmetic over transactions the user can go and look at, and
+ * the caveats are shown as prominently as the numbers rather than tucked at the
+ * bottom. An assessment that quietly rests on an assumption — that the app's
+ * idea of "essential" matches theirs, that a currency was left out — is worse
+ * than no assessment, because it invites a decision the figures do not support.
  */
 @Composable
 fun FinancialHealthScreen(
@@ -89,7 +95,7 @@ fun FinancialHealthScreen(
             }
             Column(Modifier.weight(1f)) {
                 Text(
-                    "Financial Health",
+                    "Cash Flow Snapshot",
                     style = MaterialTheme.typography.titleLarge,
                     color = SpendWiseTextPrimary
                 )
@@ -164,6 +170,35 @@ private fun HealthBody(snapshot: FinancialHealthSnapshot) {
             item { SectionTitle("Worth knowing") }
             item { CaveatCard(snapshot.caveats) }
         }
+
+        item { ScopeFooter(snapshot) }
+    }
+}
+
+/**
+ * Says plainly what this screen is and is not.
+ *
+ * Shown at the bottom of the figures rather than as a disclaimer nobody reads,
+ * because the distinction is load-bearing: someone deciding whether they can
+ * afford something needs to know this covers their cash flow and not what they
+ * own or owe in full.
+ */
+@Composable
+private fun ScopeFooter(snapshot: FinancialHealthSnapshot) {
+    HealthCard {
+        Text(
+            "Worked out on this device from your recorded transactions, tracked " +
+                "commitments and goals. It does not yet include what you own, your " +
+                "loan terms or your insurance cover.",
+            style = MaterialTheme.typography.bodySmall,
+            color = SpendWiseTextMuted
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "${snapshot.engineVersion} · ${DateUtils.formatDate(snapshot.computedAt)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = SpendWiseTextMuted
+        )
     }
 }
 

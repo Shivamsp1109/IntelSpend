@@ -101,6 +101,28 @@ const REQUIRED_TABLES = [
   );`
   },
   {
+    table: 'financial_snapshots',
+    definition: `CREATE TABLE IF NOT EXISTS financial_snapshots (
+    snapshot_id            CHAR(36) PRIMARY KEY,
+    uid                    VARCHAR(128) NOT NULL,
+    observed_state_json    JSON NOT NULL,
+    data_quality_json      JSON NOT NULL,
+    source_watermarks_json JSON NOT NULL,
+    snapshot_hash          CHAR(64) NOT NULL,
+    engine_version         VARCHAR(20) NOT NULL,
+    payload_schema_version INT NOT NULL,
+    computed_at            BIGINT NOT NULL,
+    period_start           BIGINT NOT NULL,
+    period_end             BIGINT NOT NULL,
+    currency               VARCHAR(10) NOT NULL DEFAULT 'INR',
+    timezone               VARCHAR(64) NOT NULL DEFAULT 'Asia/Kolkata',
+    INDEX idx_snapshot_user_time (uid, computed_at DESC),
+    CONSTRAINT fk_snapshot_user
+        FOREIGN KEY (uid) REFERENCES users(uid)
+        ON DELETE CASCADE
+  );`
+  },
+  {
     table: 'category_budgets',
     definition: `CREATE TABLE IF NOT EXISTS category_budgets (
     id            INT AUTO_INCREMENT PRIMARY KEY,

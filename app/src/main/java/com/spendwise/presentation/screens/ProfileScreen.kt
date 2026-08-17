@@ -168,7 +168,7 @@ fun ProfileScreen(
             )
             ProfileItem(
                 Icons.Default.Favorite,
-                "Financial Health",
+                "Cash Flow Snapshot",
                 onClick = onFinancialHealth
             )
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")

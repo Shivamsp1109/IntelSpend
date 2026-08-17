@@ -10,6 +10,7 @@ const incomesRouter = require('./routes/incomes');
 const goalsRouter = require('./routes/goals');
 const recurringRouter = require('./routes/recurring');
 const budgetsRouter = require('./routes/budgets');
+const financialStateRouter = require('./routes/financialState');
 const extractRouter = require('./routes/extract');
 
 const app = express();
@@ -56,6 +57,7 @@ app.use('/incomes', incomesRouter);
 app.use('/goals', goalsRouter);
 app.use('/recurring', recurringRouter);
 app.use('/budgets', budgetsRouter);
+app.use('/financial-state', financialStateRouter);
 app.use('/extract', extractRouter);
 
 

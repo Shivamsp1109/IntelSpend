@@ -200,6 +200,40 @@ CREATE TABLE IF NOT EXISTS category_budgets (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Financial state snapshots.
+--
+-- What the engine saw when it produced an assessment, kept whole rather than
+-- recomputed. A decision trace pointing at a snapshot has to be able to show the
+-- figures a recommendation actually rested on, and the expenses and commitments
+-- behind it keep changing — so re-deriving the state later answers a different
+-- question than the one that was asked. Never updated after insert.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS financial_snapshots (
+    snapshot_id            CHAR(36) PRIMARY KEY,
+    uid                    VARCHAR(128) NOT NULL,
+    observed_state_json    JSON NOT NULL,
+    data_quality_json      JSON NOT NULL,
+    -- How complete the server believed its own copy to be: what the device
+    -- reported as still unsynced, and when it last finished a clean sweep.
+    source_watermarks_json JSON NOT NULL,
+    snapshot_hash          CHAR(64) NOT NULL,
+    engine_version         VARCHAR(20) NOT NULL,
+    payload_schema_version INT NOT NULL,
+    computed_at            BIGINT NOT NULL,
+    period_start           BIGINT NOT NULL,
+    period_end             BIGINT NOT NULL,
+    currency               VARCHAR(10) NOT NULL DEFAULT 'INR',
+    -- Carried explicitly: period boundaries are calendar facts in the user's own
+    -- timezone, and recomputing them against the server's locale moves a month's
+    -- edge and silently changes which transactions were inside it.
+    timezone               VARCHAR(64) NOT NULL DEFAULT 'Asia/Kolkata',
+    INDEX idx_snapshot_user_time (uid, computed_at DESC),
+    CONSTRAINT fk_snapshot_user
+        FOREIGN KEY (uid) REFERENCES users(uid)
+        ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- LLM extraction usage log.
 --
 -- One row per successful model call. An escalated image writes two rows, one

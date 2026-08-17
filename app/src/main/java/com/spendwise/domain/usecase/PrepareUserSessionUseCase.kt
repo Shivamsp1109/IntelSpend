@@ -10,6 +10,7 @@ import com.spendwise.util.SessionAction
 import com.spendwise.util.SessionOwnerStore
 import com.spendwise.util.SessionOwnership
 import com.spendwise.util.SmartExtractionPreferenceStore
+import com.spendwise.util.SyncStateStore
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,7 +38,8 @@ class PrepareUserSessionUseCase @Inject constructor(
     private val incomePreferences: IncomePreferenceStore,
     private val narrativePreferences: NarrativePreferenceStore,
     private val smartExtractionPreferences: SmartExtractionPreferenceStore,
-    private val reminderState: RecurringReminderState
+    private val reminderState: RecurringReminderState,
+    private val syncStateStore: SyncStateStore
 ) {
     suspend operator fun invoke(): SessionAction {
         val uid = firebaseAuth.currentUser?.uid ?: return SessionAction.Continue
@@ -76,6 +78,10 @@ class PrepareUserSessionUseCase @Inject constructor(
         narrativePreferences.clearForNewUser()
         smartExtractionPreferences.clearForNewUser()
         reminderState.clearForNewUser()
+        // The previous account's sweep says nothing about this one's, and
+        // carrying it over would let a brand new session claim its data had
+        // already reached the server.
+        syncStateStore.clearForNewUser()
     }
 
     private companion object {
