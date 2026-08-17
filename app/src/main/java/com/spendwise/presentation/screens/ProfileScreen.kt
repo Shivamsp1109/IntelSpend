@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Category
@@ -67,6 +68,7 @@ fun ProfileScreen(
     onRecurringPayments: () -> Unit = {},
     onBudgets: () -> Unit = {},
     onFinancialHealth: () -> Unit = {},
+    onAssets: () -> Unit = {},
     onLogout: () -> Unit,
     smartExtractionViewModel: SmartExtractionViewModel = hiltViewModel()
 ) {
@@ -170,6 +172,11 @@ fun ProfileScreen(
                 Icons.Default.Favorite,
                 "Cash Flow Snapshot",
                 onClick = onFinancialHealth
+            )
+            ProfileItem(
+                Icons.Default.AccountBalance,
+                "What You Own",
+                onClick = onAssets
             )
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")
             ProfileItem(Icons.Default.Settings, "Settings")

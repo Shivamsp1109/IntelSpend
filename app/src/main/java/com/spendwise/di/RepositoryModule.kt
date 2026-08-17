@@ -2,12 +2,16 @@ package com.spendwise.di
 
 import com.spendwise.data.repository.AuthRepositoryImpl
 import com.spendwise.data.repository.AnalyticsRepositoryImpl
+import com.spendwise.data.repository.AssetRepositoryImpl
+import com.spendwise.data.repository.LoanDetailsRepositoryImpl
 import com.spendwise.data.repository.ExpenseRepositoryImpl
 import com.spendwise.data.repository.GoalRepositoryImpl
 import com.spendwise.data.repository.IncomeRepositoryImpl
 import com.spendwise.data.repository.RecurringEntryRepositoryImpl
 import com.spendwise.domain.repository.AuthRepository
 import com.spendwise.domain.repository.AnalyticsRepository
+import com.spendwise.domain.repository.AssetRepository
+import com.spendwise.domain.repository.LoanDetailsRepository
 import com.spendwise.domain.repository.ExpenseRepository
 import com.spendwise.domain.repository.GoalRepository
 import com.spendwise.domain.repository.IncomeRepository
@@ -47,5 +51,17 @@ abstract class RepositoryModule {
     abstract fun bindRecurringEntryRepository(
         repository: RecurringEntryRepositoryImpl
     ): RecurringEntryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAssetRepository(
+        repository: AssetRepositoryImpl
+    ): AssetRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLoanDetailsRepository(
+        repository: LoanDetailsRepositoryImpl
+    ): LoanDetailsRepository
 }
 

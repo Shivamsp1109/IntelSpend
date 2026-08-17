@@ -101,6 +101,57 @@ const REQUIRED_TABLES = [
   );`
   },
   {
+    table: 'loan_details',
+    definition: `CREATE TABLE IF NOT EXISTS loan_details (
+    id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                     VARCHAR(128) NOT NULL,
+    recurring_local_id      INT NOT NULL,
+    principal_outstanding   DECIMAL(18, 2) NOT NULL,
+    outstanding_as_of       BIGINT NOT NULL,
+    currency                VARCHAR(10) NOT NULL DEFAULT 'INR',
+    interest_rate           DECIMAL(7, 4) DEFAULT NULL,
+    rate_type               ENUM('FIXED', 'VARIABLE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    rate_reset_date         BIGINT DEFAULT NULL,
+    interest_compounding    ENUM('MONTHLY', 'ANNUAL', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    scheduled_payment       DECIMAL(18, 2) DEFAULT NULL,
+    payment_frequency       ENUM('MONTHLY', 'QUARTERLY', 'YEARLY', 'WEEKLY', 'BIWEEKLY') NOT NULL DEFAULT 'MONTHLY',
+    remaining_installments  INT DEFAULT NULL,
+    next_payment_date       BIGINT DEFAULT NULL,
+    prepayment_charge_type  ENUM('NONE', 'FLAT', 'PERCENT_OF_PRINCIPAL', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    prepayment_charge_value DECIMAL(18, 4) DEFAULT NULL,
+    fees_or_penalties       DECIMAL(18, 2) DEFAULT NULL,
+    updated_at              BIGINT NOT NULL,
+    UNIQUE KEY unique_loan_per_commitment (uid, recurring_local_id),
+    CONSTRAINT fk_loan_details_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE,
+    CONSTRAINT fk_loan_details_recurring
+        FOREIGN KEY (uid, recurring_local_id) REFERENCES recurring(uid, local_id) ON DELETE CASCADE
+  );`
+  },
+  {
+    table: 'assets',
+    definition: `CREATE TABLE IF NOT EXISTS assets (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                 VARCHAR(128) NOT NULL,
+    local_id            INT NOT NULL,
+    asset_type          ENUM('CASH','BANK_ACCOUNT','FIXED_DEPOSIT','RECURRING_DEPOSIT','MUTUAL_FUND','STOCK','BOND','ETF','PROVIDENT_FUND','PENSION','NPS','GOLD','REAL_ESTATE','VEHICLE','INSURANCE_CASH_VALUE','CRYPTO','LOAN_GIVEN','OTHER') NOT NULL DEFAULT 'OTHER',
+    label               VARCHAR(255) NOT NULL,
+    current_value       DECIMAL(18, 2) NOT NULL,
+    currency            VARCHAR(10) NOT NULL DEFAULT 'INR',
+    valuation_date      BIGINT NOT NULL,
+    liquidity_class     ENUM('LIQUID_CASH','LIQUID_INVESTMENT','ILLIQUID_INVESTMENT','PHYSICAL','RETIREMENT_LOCKED') NOT NULL DEFAULT 'ILLIQUID_INVESTMENT',
+    lock_in_until       BIGINT DEFAULT NULL,
+    ownership           ENUM('SELF', 'JOINT', 'FAMILY') NOT NULL DEFAULT 'SELF',
+    verification_source ENUM('MANUAL', 'IMPORTED', 'CONFIRMED') NOT NULL DEFAULT 'MANUAL',
+    account_type        VARCHAR(120) DEFAULT NULL,
+    updated_at          BIGINT NOT NULL,
+    UNIQUE KEY unique_asset_per_user (uid, local_id),
+    INDEX idx_assets_liquidity (uid, liquidity_class),
+    CONSTRAINT fk_assets_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
+  );`
+  },
+  {
     table: 'financial_snapshots',
     definition: `CREATE TABLE IF NOT EXISTS financial_snapshots (
     snapshot_id            CHAR(36) PRIMARY KEY,

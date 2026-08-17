@@ -10,6 +10,8 @@ const incomesRouter = require('./routes/incomes');
 const goalsRouter = require('./routes/goals');
 const recurringRouter = require('./routes/recurring');
 const budgetsRouter = require('./routes/budgets');
+const assetsRouter = require('./routes/assets');
+const loanDetailsRouter = require('./routes/loanDetails');
 const financialStateRouter = require('./routes/financialState');
 const extractRouter = require('./routes/extract');
 
@@ -57,6 +59,8 @@ app.use('/incomes', incomesRouter);
 app.use('/goals', goalsRouter);
 app.use('/recurring', recurringRouter);
 app.use('/budgets', budgetsRouter);
+app.use('/assets', assetsRouter);
+app.use('/loan-details', loanDetailsRouter);
 app.use('/financial-state', financialStateRouter);
 app.use('/extract', extractRouter);
 

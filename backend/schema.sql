@@ -200,6 +200,81 @@ CREATE TABLE IF NOT EXISTS category_budgets (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Loan structure.
+--
+-- What a debt is, as distinct from what is paid towards it. The recurring table
+-- says what leaves the account each month; this says what is still owed, what
+-- the borrowing costs and when it ends — none of which can be read from payment
+-- history. Optional and heavily nullable on purpose: people know their EMI and
+-- often not their rate, and the engine's job there is to say what it cannot work
+-- out rather than assume a plausible figure.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS loan_details (
+    id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                     VARCHAR(128) NOT NULL,
+    recurring_local_id      INT NOT NULL,
+    principal_outstanding   DECIMAL(18, 2) NOT NULL,
+    -- A balance is only true on the day it was read.
+    outstanding_as_of       BIGINT NOT NULL,
+    currency                VARCHAR(10) NOT NULL DEFAULT 'INR',
+    -- Annual nominal rate as a percentage, e.g. 8.75.
+    interest_rate           DECIMAL(7, 4) DEFAULT NULL,
+    rate_type               ENUM('FIXED', 'VARIABLE', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    rate_reset_date         BIGINT DEFAULT NULL,
+    interest_compounding    ENUM('MONTHLY', 'ANNUAL', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    scheduled_payment       DECIMAL(18, 2) DEFAULT NULL,
+    payment_frequency       ENUM('MONTHLY', 'QUARTERLY', 'YEARLY', 'WEEKLY', 'BIWEEKLY') NOT NULL DEFAULT 'MONTHLY',
+    remaining_installments  INT DEFAULT NULL,
+    next_payment_date       BIGINT DEFAULT NULL,
+    -- Enumerated, not free text: a payoff comparison must subtract this, and
+    -- "2% or ₹5000 whichever is higher" cannot drive a deterministic figure.
+    prepayment_charge_type  ENUM('NONE', 'FLAT', 'PERCENT_OF_PRINCIPAL', 'UNKNOWN') NOT NULL DEFAULT 'UNKNOWN',
+    prepayment_charge_value DECIMAL(18, 4) DEFAULT NULL,
+    fees_or_penalties       DECIMAL(18, 2) DEFAULT NULL,
+    updated_at              BIGINT NOT NULL,
+    UNIQUE KEY unique_loan_per_commitment (uid, recurring_local_id),
+    CONSTRAINT fk_loan_details_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE,
+    CONSTRAINT fk_loan_details_recurring
+        FOREIGN KEY (uid, recurring_local_id) REFERENCES recurring(uid, local_id) ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Assets.
+--
+-- Deliberately no expected_return or risk_level column. An asset is "a mutual
+-- fund holding worth ₹4,00,000 as of 12 August" — an observed fact. "A mutual
+-- fund that returns 11%" is a dated modelling assumption about an asset class,
+-- and storing it on the row would let a projection present it as something the
+-- user told us. Expected returns live in versioned assumption sets instead.
+--
+-- Liquidity is its own field rather than inferred from the type: a fixed deposit
+-- and a five-year tax-saving deposit are both FIXED_DEPOSIT and only one can be
+-- reached in an emergency.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS assets (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                 VARCHAR(128) NOT NULL,
+    local_id            INT NOT NULL,
+    asset_type          ENUM('CASH','BANK_ACCOUNT','FIXED_DEPOSIT','RECURRING_DEPOSIT','MUTUAL_FUND','STOCK','BOND','ETF','PROVIDENT_FUND','PENSION','NPS','GOLD','REAL_ESTATE','VEHICLE','INSURANCE_CASH_VALUE','CRYPTO','LOAN_GIVEN','OTHER') NOT NULL DEFAULT 'OTHER',
+    label               VARCHAR(255) NOT NULL,
+    current_value       DECIMAL(18, 2) NOT NULL,
+    currency            VARCHAR(10) NOT NULL DEFAULT 'INR',
+    valuation_date      BIGINT NOT NULL,
+    liquidity_class     ENUM('LIQUID_CASH','LIQUID_INVESTMENT','ILLIQUID_INVESTMENT','PHYSICAL','RETIREMENT_LOCKED') NOT NULL DEFAULT 'ILLIQUID_INVESTMENT',
+    -- A tax-saving deposit is liquid in three years and not before.
+    lock_in_until       BIGINT DEFAULT NULL,
+    ownership           ENUM('SELF', 'JOINT', 'FAMILY') NOT NULL DEFAULT 'SELF',
+    verification_source ENUM('MANUAL', 'IMPORTED', 'CONFIRMED') NOT NULL DEFAULT 'MANUAL',
+    account_type        VARCHAR(120) DEFAULT NULL,
+    updated_at          BIGINT NOT NULL,
+    UNIQUE KEY unique_asset_per_user (uid, local_id),
+    INDEX idx_assets_liquidity (uid, liquidity_class),
+    CONSTRAINT fk_assets_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Financial state snapshots.
 --
 -- What the engine saw when it produced an assessment, kept whole rather than

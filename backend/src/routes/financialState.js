@@ -13,6 +13,9 @@ const {
 } = require('../engine/financialState');
 const { assessDataQuality } = require('../engine/dataQuality');
 const { assessCashFlow } = require('../engine/cashFlowEngine');
+const { assessDebt } = require('../engine/debtEngine');
+const { assessNetWorth, readAsset } = require('../engine/netWorthEngine');
+const { assessEmergencyFund } = require('../engine/emergencyFundEngine');
 const { completeMonths, DEFAULT_BASELINE_MONTHS } = require('../engine/periods');
 const { COMPONENT } = require('../engine/readiness');
 
@@ -45,6 +48,11 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
     const timezone = readTimezone(req.query);
 
     const rows = await loadRows(uid, period);
+    // Loan terms and holdings, loaded before the quality assessment so that it
+    // can see the domains they cover. Debt reads the terms rather than the EMI
+    // payments: what is owed and what it costs cannot be read from a payment
+    // history.
+    const { loanRows, assetRows } = await loadHoldings(uid, currency);
 
     const observedState = buildObservedState({ rows, currency, period, timezone, now });
     const watermarks = sourceWatermarks({
@@ -52,7 +60,12 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
       lastSuccessfulSyncAt: req.query.lastSuccessfulSyncAt,
       now
     });
-    const dataQuality = assessDataQuality({ rows, observedState, watermarks, now });
+    const dataQuality = assessDataQuality({
+      rows: { ...rows, assets: assetRows, loans: loanRows },
+      observedState,
+      watermarks,
+      now
+    });
 
     // Cash flow reads a wider window than the requested period: a baseline needs
     // several complete months, and the period a caller asks about is usually one.
@@ -66,6 +79,25 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
       now,
       timezone,
       monthsBack: DEFAULT_BASELINE_MONTHS
+    });
+
+    const debt = assessDebt({
+      loanRows,
+      monthlyIncome: cashFlow.income.baseline,
+      currency,
+      now
+    });
+
+    const assets = assetRows.map((row) => readAsset(row, currency));
+    const netWorth = assessNetWorth({ assetRows, debtAssessment: debt, currency, now });
+    const emergencyFund = assessEmergencyFund({
+      assets,
+      expenseRows: scopedToCurrency(baselineRows, currency).expenses,
+      months: completeMonths({ now, timeZone: timezone, count: DEFAULT_BASELINE_MONTHS }),
+      incomeStability: cashFlow.income.stability.band,
+      debtServiceRatio: debt.debtServiceRatio,
+      currency,
+      now
     });
 
     const snapshotId = crypto.randomUUID();
@@ -93,6 +125,15 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
         readiness: dataQuality.readiness[COMPONENT.CASH_FLOW],
         ...presentable(cashFlow)
       },
+      debt: {
+        readiness: dataQuality.readiness[COMPONENT.DEBT_SERVICE],
+        ...presentable(debt)
+      },
+      netWorth: {
+        readiness: dataQuality.readiness[COMPONENT.NET_WORTH],
+        ...presentable(netWorth)
+      },
+      emergencyFund: presentable(emergencyFund),
       sourceWatermarks: watermarks
     });
   } catch (error) {
@@ -132,6 +173,36 @@ async function loadBaselineRows(uid, now, timezone) {
   );
 
   return { expenses, incomes, recurring };
+}
+
+/**
+ * Loan terms and holdings, scoped to the analysis currency.
+ *
+ * Filtered in SQL rather than in memory: unlike transactions, these tables have
+ * no period to bound them, so an account holding a dozen foreign-currency
+ * positions would otherwise read them all just to discard them.
+ */
+async function loadHoldings(uid, currency) {
+  const [loanRows] = await pool.execute(
+    `SELECT recurring_local_id, principal_outstanding, outstanding_as_of, currency,
+            interest_rate, rate_type, rate_reset_date, interest_compounding,
+            scheduled_payment, payment_frequency, remaining_installments,
+            next_payment_date, prepayment_charge_type, prepayment_charge_value,
+            fees_or_penalties
+       FROM loan_details
+      WHERE uid = ? AND currency = ?`,
+    [uid, currency]
+  );
+
+  const [assetRows] = await pool.execute(
+    `SELECT local_id, label, asset_type, current_value, currency, valuation_date,
+            liquidity_class, lock_in_until, ownership, verification_source
+       FROM assets
+      WHERE uid = ? AND currency = ?`,
+    [uid, currency]
+  );
+
+  return { loanRows, assetRows };
 }
 
 /** Drops anything denominated differently, so the engine below never sees a mix. */

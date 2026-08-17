@@ -54,13 +54,25 @@ function pageParams(query) {
  * `nextAfter` is null on the last page. It is derived from whether the page
  * came back full rather than from a total count: counting the whole table on
  * every page costs more than the page itself.
+ *
+ * `cursorField` exists because not every table pages on a column called
+ * `localId` — loan terms are keyed by the commitment they belong to. Reading a
+ * field that is not there would return undefined and silently end the restore
+ * one page in, so the name is stated and verified rather than assumed.
  */
-function page(rows, limit) {
+function page(rows, limit, cursorField = 'localId') {
   const complete = rows.length === limit;
-  return {
-    items: rows,
-    nextAfter: complete ? rows[rows.length - 1].localId : null
-  };
+  if (!complete) return { items: rows, nextAfter: null };
+
+  const cursor = rows[rows.length - 1][cursorField];
+  if (cursor === undefined) {
+    throw new Error(
+      `Cannot page: rows have no '${cursorField}' to continue from. ` +
+      'A restore would stop here without saying why.'
+    );
+  }
+
+  return { items: rows, nextAfter: cursor };
 }
 
 module.exports = { pageParams, page, DEFAULT_LIMIT, MAX_LIMIT };

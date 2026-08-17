@@ -88,8 +88,43 @@ const PERIODS_PER_MONTH = Object.freeze({
   [CADENCE.YEARLY]: 1 / MONTHS_PER_YEAR
 });
 
+/**
+ * Categories treated as essential when nothing else is known.
+ *
+ * A default, and every figure derived from it says so. Whether eating out is
+ * essential depends on whose life it is — a household with no working kitchen
+ * and one with a restaurant habit produce identical rows here — so the app has
+ * no standing to decide it. The split earns its place by making the question
+ * visible, not by being right about any particular person.
+ *
+ * Labels rather than enum names, because that is what the category column holds.
+ */
+const ESSENTIAL_CATEGORIES = Object.freeze([
+  'Rent & Housing',
+  'Utilities',
+  'Mobile & Internet',
+  'Groceries',
+  'Health & Medical',
+  'Insurance',
+  'Education',
+  'Transport',
+  'Fuel',
+  'Kids & Family',
+  'Taxes & Government'
+]);
+
+/** The caveat that must travel with any figure built on the split above. */
+const ESSENTIAL_SPLIT_CAVEAT =
+  'Essential spending uses the app\'s default view of each category, not your ' +
+  'own — treat it as a starting point.';
+
+const isEssentialCategory = (category) => ESSENTIAL_CATEGORIES.includes(category);
+
 module.exports = {
   ENGINE_VERSION,
+  ESSENTIAL_CATEGORIES,
+  ESSENTIAL_SPLIT_CAVEAT,
+  isEssentialCategory,
   PAYLOAD_SCHEMA_VERSION,
   NATURE,
   OUTFLOW_NATURES,

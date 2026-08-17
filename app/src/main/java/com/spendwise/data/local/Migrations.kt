@@ -388,6 +388,79 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
  * last exactly until the next payment arrived at that price and the same
  * question would be asked every month.
  */
+/**
+ * What the user owns, and the terms behind what they owe.
+ *
+ * Both tables arrive together because the two questions they answer are the same
+ * question: net worth needs assets on one side and real balances on the other,
+ * and splitting them across two migrations would leave a release where the
+ * figure could only ever be half-computed.
+ *
+ * The DDL below is copied byte for byte from Room's exported schema. Room
+ * compares the migrated database against its own generated definition on open,
+ * and a difference as small as a missing `NOT NULL` fails the whole app at
+ * launch rather than at the point the column is read.
+ */
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `assets` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `label` TEXT NOT NULL,
+                `type` TEXT NOT NULL,
+                `currentValue` REAL NOT NULL,
+                `currency` TEXT NOT NULL,
+                `valuationDate` INTEGER NOT NULL,
+                `liquidityClass` TEXT NOT NULL,
+                `lockInUntil` INTEGER,
+                `ownership` TEXT NOT NULL,
+                `verificationSource` TEXT NOT NULL,
+                `accountType` TEXT,
+                `isSynced` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_assets_liquidityClass` ON `assets` (`liquidityClass`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_assets_isSynced` ON `assets` (`isSynced`)")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `loan_details` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `recurringId` INTEGER NOT NULL,
+                `principalOutstanding` REAL NOT NULL,
+                `outstandingAsOf` INTEGER NOT NULL,
+                `currency` TEXT NOT NULL,
+                `interestRate` REAL,
+                `rateType` TEXT NOT NULL,
+                `rateResetDate` INTEGER,
+                `compounding` TEXT NOT NULL,
+                `scheduledPayment` REAL,
+                `paymentFrequency` TEXT NOT NULL,
+                `remainingInstallments` INTEGER,
+                `nextPaymentDate` INTEGER,
+                `prepaymentChargeType` TEXT NOT NULL,
+                `prepaymentChargeValue` REAL,
+                `feesOrPenalties` REAL,
+                `isSynced` INTEGER NOT NULL,
+                FOREIGN KEY(`recurringId`) REFERENCES `recurring`(`id`)
+                    ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent()
+        )
+        // Unique: one loan has one set of terms, and a second row would make
+        // every total that reads them ambiguous.
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_loan_details_recurringId` " +
+                "ON `loan_details` (`recurringId`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_loan_details_isSynced` ON `loan_details` (`isSynced`)"
+        )
+    }
+}
+
 val MIGRATION_12_13 = object : Migration(12, 13) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `recurring` ADD COLUMN `pendingAmount` REAL")

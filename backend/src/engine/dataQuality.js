@@ -33,7 +33,7 @@ const DOMAINS = Object.freeze([
 ]);
 
 /** Domains that have no store yet — arriving in later stages. */
-const NOT_YET_COLLECTED = Object.freeze(['assets', 'liabilities', 'insurance', 'riskProfile']);
+const NOT_YET_COLLECTED = Object.freeze(['insurance', 'riskProfile']);
 
 /**
  * Reduces raw rows to the presence-and-recency shape readiness needs.
@@ -71,6 +71,17 @@ function domainPresence(rows, now) {
     goals: {
       hasData: rows.goals.length > 0,
       newestAsOf: rows.goals.length > 0 ? now : null
+    },
+    assets: {
+      hasData: (rows.assets ?? []).length > 0,
+      // When the holding was last valued, not when the row was touched. A
+      // figure from eight months ago says little about today whatever the
+      // record's edit history claims.
+      newestAsOf: newest(rows.assets ?? [], 'valuation_date')
+    },
+    liabilities: {
+      hasData: (rows.loans ?? []).length > 0,
+      newestAsOf: newest(rows.loans ?? [], 'outstanding_as_of')
     }
   };
 

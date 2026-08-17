@@ -7,7 +7,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.spendwise.data.local.CategoryBudgetDao
 import com.spendwise.data.remote.MySqlBudgetDataSource
+import com.spendwise.domain.repository.AssetRepository
 import com.spendwise.domain.repository.ExpenseRepository
+import com.spendwise.domain.repository.LoanDetailsRepository
 import com.spendwise.domain.repository.GoalRepository
 import com.spendwise.domain.repository.IncomeRepository
 import com.spendwise.domain.repository.RecurringEntryRepository
@@ -40,6 +42,8 @@ class SyncWorker @AssistedInject constructor(
     private val reconcileRecurringPayments: ReconcileRecurringPaymentsUseCase,
     private val budgetDao: CategoryBudgetDao,
     private val budgetDataSource: MySqlBudgetDataSource,
+    private val assetRepository: AssetRepository,
+    private val loanDetailsRepository: LoanDetailsRepository,
     private val syncStateStore: SyncStateStore
 ) : CoroutineWorker(context, params) {
 
@@ -90,6 +94,14 @@ class SyncWorker @AssistedInject constructor(
 
         runCatching { syncPendingBudgets() }
             .onFailure { Log.w(TAG, "Budget sync failed.", it); anyFailure = true }
+
+        runCatching { assetRepository.syncPendingAssets() }
+            .onFailure { Log.w(TAG, "Asset sync failed.", it); anyFailure = true }
+
+        // After assets rather than before: loan terms reference a commitment, so
+        // the row they hang off should already be on the server.
+        runCatching { loanDetailsRepository.syncPendingLoanDetails() }
+            .onFailure { Log.w(TAG, "Loan terms sync failed.", it); anyFailure = true }
 
         return anyFailure
     }

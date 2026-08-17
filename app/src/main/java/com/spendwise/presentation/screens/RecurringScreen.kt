@@ -95,6 +95,7 @@ fun RecurringScreen(
     val message by viewModel.message.collectAsState()
     val context = LocalContext.current
     var editing by remember { mutableStateOf<RecurringDraft?>(null) }
+    var editingLoanFor by remember { mutableStateOf<RecurringEntry?>(null) }
 
     LaunchedEffect(message) {
         message?.let {
@@ -218,12 +219,17 @@ fun RecurringScreen(
                             onStatus = { viewModel.setStatus(entry, it) },
                             onDelete = { viewModel.delete(entry) },
                             onAcceptPrice = { viewModel.acceptPriceChange(entry) },
-                            onKeepPrice = { viewModel.keepExistingPrice(entry) }
+                            onKeepPrice = { viewModel.keepExistingPrice(entry) },
+                            onLoanTerms = { editingLoanFor = entry }
                         )
                     }
                 }
             }
         }
+    }
+
+    editingLoanFor?.let { entry ->
+        LoanDetailsSheet(entry = entry, onDismiss = { editingLoanFor = null })
     }
 
     editing?.let { draft ->
@@ -308,7 +314,8 @@ private fun TrackedCard(
     onStatus: (RecurringStatus) -> Unit,
     onDelete: () -> Unit,
     onAcceptPrice: () -> Unit = {},
-    onKeepPrice: () -> Unit = {}
+    onKeepPrice: () -> Unit = {},
+    onLoanTerms: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -388,6 +395,16 @@ private fun TrackedCard(
                     TextButton(onClick = onKeepPrice) {
                         Text("Keep", color = SpendWiseTextMuted)
                     }
+                }
+            }
+
+            // Offered only where it means something. Loan terms on a Netflix
+            // subscription would be noise; on an EMI they are what turns a
+            // payment record into a debt the engine can actually reason about.
+            if (entry.nature == TransactionNature.LoanRepayment) {
+                Spacer(Modifier.height(2.dp))
+                TextButton(onClick = onLoanTerms) {
+                    Text("Loan terms", color = SpendWisePurple)
                 }
             }
 
