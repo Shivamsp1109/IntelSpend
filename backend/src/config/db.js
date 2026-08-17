@@ -119,7 +119,52 @@ const REQUIRED_TABLES = [
   }
 ];
 
+/**
+ * Whether the migration runner has been run to the version this code expects.
+ *
+ * The checks below catch a specific missing table or column. This catches the
+ * more useful thing: that `npm run migrate` was not run at all after a deploy.
+ * Kept separate from the runner itself so the server never applies schema
+ * changes as a side effect of starting — a process that migrates on boot will
+ * eventually do it from three instances at once.
+ */
+async function assertMigrationsAreApplied() {
+  // Required lazily: migrate.js requires this module, and at module scope that
+  // is a cycle that leaves one of the two half-initialised.
+  const { latestVersionOnDisk } = require('../migrate');
+  const expected = latestVersionOnDisk();
+  if (expected === 0) return;
+
+  const [ledger] = await pool.query(
+    `SELECT 1 FROM information_schema.tables
+      WHERE table_schema = DATABASE() AND table_name = 'schema_migrations'
+      LIMIT 1`
+  );
+
+  if (ledger.length === 0) {
+    throw new Error(
+      'This database has never been migrated.\n' +
+      '  Run: npm run migrate\n' +
+      '(On a brand new database, load schema.sql first.)'
+    );
+  }
+
+  const [rows] = await pool.query(
+    'SELECT COALESCE(MAX(version), 0) AS version FROM schema_migrations'
+  );
+  const applied = Number(rows[0].version);
+
+  if (applied < expected) {
+    throw new Error(
+      `The database is at migration ${applied}, this version needs ${expected}.\n` +
+      '  Run: npm run migrate'
+    );
+  }
+}
+
 async function assertSchemaIsCurrent() {
+  await assertMigrationsAreApplied();
+
   const statements = [];
 
   // Tables first: a missing table makes every one of its columns report missing
@@ -171,5 +216,6 @@ async function assertSchemaIsCurrent() {
 module.exports = {
   pool,
   assertDatabaseConnection,
-  assertSchemaIsCurrent
+  assertSchemaIsCurrent,
+  assertMigrationsAreApplied
 };
