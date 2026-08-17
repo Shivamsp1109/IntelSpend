@@ -12,6 +12,9 @@ const {
   PAYLOAD_SCHEMA_VERSION
 } = require('../engine/financialState');
 const { assessDataQuality } = require('../engine/dataQuality');
+const { assessCashFlow } = require('../engine/cashFlowEngine');
+const { completeMonths, DEFAULT_BASELINE_MONTHS } = require('../engine/periods');
+const { COMPONENT } = require('../engine/readiness');
 
 const router = express.Router();
 
@@ -51,6 +54,20 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
     });
     const dataQuality = assessDataQuality({ rows, observedState, watermarks, now });
 
+    // Cash flow reads a wider window than the requested period: a baseline needs
+    // several complete months, and the period a caller asks about is usually one.
+    // Rows are scoped to the analysis currency first — the state builder reports
+    // what that excluded, and below that boundary a mismatch is a fault, so the
+    // engine throws rather than quietly dropping a figure.
+    const baselineRows = await loadBaselineRows(uid, now, timezone);
+    const cashFlow = assessCashFlow({
+      rows: scopedToCurrency(baselineRows, currency),
+      currency,
+      now,
+      timezone,
+      monthsBack: DEFAULT_BASELINE_MONTHS
+    });
+
     const snapshotId = crypto.randomUUID();
     const snapshotHash = hashOf(observedState);
 
@@ -70,11 +87,58 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
       timezone,
       observedState: presentable(observedState),
       dataQuality,
+      // Carried with its readiness rather than as a bare figure, so a consumer
+      // cannot present a baseline built on missing income as though it stood.
+      cashFlow: {
+        readiness: dataQuality.readiness[COMPONENT.CASH_FLOW],
+        ...presentable(cashFlow)
+      },
       sourceWatermarks: watermarks
     });
   } catch (error) {
     return next(error);
   }
+});
+
+/**
+ * Rows over the baseline window, which reaches further back than the period
+ * being reported on.
+ */
+async function loadBaselineRows(uid, now, timezone) {
+  const months = completeMonths({ now, timeZone: timezone, count: DEFAULT_BASELINE_MONTHS });
+  const from = months[0].start;
+  const to = months[months.length - 1].end;
+
+  const [expenses] = await pool.execute(
+    `SELECT id, local_id, amount, currency, nature, category, expense_date
+       FROM expenses
+      WHERE uid = ? AND expense_date BETWEEN ? AND ?`,
+    [uid, from, to]
+  );
+
+  const [incomes] = await pool.execute(
+    `SELECT id, local_id, amount, currency, source, income_date
+       FROM incomes
+      WHERE uid = ? AND income_date BETWEEN ? AND ?`,
+    [uid, from, to]
+  );
+
+  const [recurring] = await pool.execute(
+    `SELECT local_id, title, amount, cadence, currency, nature, category, status,
+            last_occurrence_date, next_due_date, pending_amount
+       FROM recurring
+      WHERE uid = ?`,
+    [uid]
+  );
+
+  return { expenses, incomes, recurring };
+}
+
+/** Drops anything denominated differently, so the engine below never sees a mix. */
+const scopedToCurrency = (rows, currency) => ({
+  expenses: rows.expenses.filter((row) => row.currency === currency),
+  incomes: rows.incomes.filter((row) => row.currency === currency),
+  recurring: rows.recurring.filter((row) => row.currency === currency)
 });
 
 /** GET /financial-state/snapshot/:snapshotId — reads one back, unchanged. */
