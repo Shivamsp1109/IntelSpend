@@ -2,7 +2,10 @@ const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('../config/db');
 const { requireFirebaseAuth } = require('../middleware/auth');
-const { modelLimiter } = require('../middleware/rateLimit');
+// The history read is not model-backed, so it takes the ordinary sync limiter
+// rather than the tighter model one — but it does read a conversation about
+// somebody's finances, so it is not unlimited either.
+const { modelLimiter, syncLimiter } = require('../middleware/rateLimit');
 const { buildAssessmentContext, presentable } = require('../services/assessmentContext');
 const { writeTrace } = require('../services/decisionTraceStore');
 const { countCallsThisMonth, recordUsage, FEATURE } = require('../services/modelUsage');
@@ -156,7 +159,7 @@ router.post('/', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
 });
 
 /** GET /chat/:conversationId — the exchange so far, owner-scoped. */
-router.get('/:conversationId', requireFirebaseAuth, async (req, res, next) => {
+router.get('/:conversationId', requireFirebaseAuth, syncLimiter, async (req, res, next) => {
   try {
     const [rows] = await pool.execute(
       `SELECT role, content, intent, decision_trace_id AS decisionTraceId,

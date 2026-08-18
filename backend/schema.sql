@@ -410,7 +410,13 @@ CREATE TABLE IF NOT EXISTS llm_usage (
     -- places would round a meaningful share of each row away.
     estimated_cost_usd DECIMAL(12, 8) NOT NULL DEFAULT 0,
     created_at         BIGINT       NOT NULL,
-    INDEX idx_llm_usage_uid_time (uid, created_at)
+    INDEX idx_llm_usage_uid_time (uid, created_at),
+    -- Usage follows the account. These rows hold no request content, but they
+    -- are still a record of somebody's activity, and a deletion that leaves
+    -- them behind is not a deletion.
+    CONSTRAINT fk_llm_usage_user
+        FOREIGN KEY (uid) REFERENCES users(uid)
+        ON DELETE CASCADE
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
