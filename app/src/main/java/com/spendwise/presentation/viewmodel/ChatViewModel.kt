@@ -104,7 +104,16 @@ class ChatViewModel @Inject constructor(
                             // engine wrote because the assistant's wording was
                             // refused is a different kind of answer.
                             isEngineWorded = response.wordingFallback == true,
-                            caveats = response.dataQuality?.caveats.orEmpty()
+                            caveats = response.dataQuality?.caveats.orEmpty(),
+                            citations = response.citations.orEmpty().mapNotNull { citation ->
+                                val publisher = citation.publisher ?: return@mapNotNull null
+                                ChatCitation(
+                                    publisher = publisher,
+                                    title = citation.title.orEmpty(),
+                                    url = citation.url,
+                                    reviewer = citation.reviewer
+                                )
+                            }
                         ),
                         suggestions = response.suggestedFollowUps.orEmpty(),
                         isSending = false
@@ -143,7 +152,22 @@ data class ChatTurn(
     val text: String,
     val traceId: String? = null,
     val isEngineWorded: Boolean = false,
-    val caveats: List<String> = emptyList()
+    val caveats: List<String> = emptyList(),
+    val citations: List<ChatCitation> = emptyList()
+)
+
+/**
+ * Where a rules answer came from.
+ *
+ * Shown rather than footnoted. A claim about tax or regulation that the user
+ * cannot trace to a publisher is one they have to take on trust, which is
+ * exactly what this app declines to ask of them.
+ */
+data class ChatCitation(
+    val publisher: String,
+    val title: String,
+    val url: String?,
+    val reviewer: String?
 )
 
 data class ChatUiState(

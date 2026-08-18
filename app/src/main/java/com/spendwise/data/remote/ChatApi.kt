@@ -51,12 +51,26 @@ data class ChatResponse(
     val snapshotId: String?,
     val intent: String?,
     val paragraphs: List<String>?,
+    /**
+     * Where a rules answer came from. Present only for knowledge questions —
+     * an answer about the user's own figures cites their records, not a
+     * publisher.
+     */
+    val citations: List<ChatCitationPayload>?,
     val suggestedFollowUps: List<String>?,
     val dataQuality: ChatDataQualityPayload?,
     /** True when the numeric gate refused the model's wording and the engine answered. */
     val wordingFallback: Boolean?,
     val callsUsedThisMonth: Int?,
     val monthlyCallCap: Int?
+)
+
+data class ChatCitationPayload(
+    val publisher: String?,
+    val title: String?,
+    val url: String?,
+    /** Who confirmed this source says what is claimed. */
+    val reviewer: String?
 )
 
 data class ChatDataQualityPayload(

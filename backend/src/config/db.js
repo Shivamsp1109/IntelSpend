@@ -131,6 +131,58 @@ const REQUIRED_TABLES = [
   );`
   },
   {
+    table: 'knowledge_sources',
+    definition: `CREATE TABLE IF NOT EXISTS knowledge_sources (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    publisher        VARCHAR(160) NOT NULL,
+    title            VARCHAR(500) NOT NULL,
+    url              VARCHAR(1000) NOT NULL,
+    jurisdiction     VARCHAR(8) NOT NULL DEFAULT 'IN',
+    reviewer         VARCHAR(160) NOT NULL,
+    retrieved_date   BIGINT NOT NULL,
+    effective_date   BIGINT DEFAULT NULL,
+    review_due_date  BIGINT NOT NULL,
+    source_hash      CHAR(64) NOT NULL,
+    status           ENUM('ACTIVE','SUPERSEDED','UNDER_REVIEW') NOT NULL DEFAULT 'UNDER_REVIEW',
+    superseded_by    BIGINT DEFAULT NULL,
+    updated_at       BIGINT NOT NULL,
+    INDEX idx_knowledge_source_status (status, jurisdiction, review_due_date),
+    CONSTRAINT fk_knowledge_superseded_by
+        FOREIGN KEY (superseded_by) REFERENCES knowledge_sources(id) ON DELETE SET NULL
+  );`
+  },
+  {
+    table: 'knowledge_snippets',
+    definition: `CREATE TABLE IF NOT EXISTS knowledge_snippets (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    source_id      BIGINT NOT NULL,
+    topic          VARCHAR(64) NOT NULL,
+    snippet_text   TEXT NOT NULL,
+    keywords       VARCHAR(500) NOT NULL DEFAULT '',
+    effective_from BIGINT NOT NULL,
+    effective_to   BIGINT DEFAULT NULL,
+    updated_at     BIGINT NOT NULL,
+    INDEX idx_snippet_topic (topic, effective_from),
+    INDEX idx_snippet_source (source_id),
+    CONSTRAINT fk_snippet_source
+        FOREIGN KEY (source_id) REFERENCES knowledge_sources(id) ON DELETE CASCADE
+  );`
+  },
+  {
+    table: 'knowledge_claims',
+    definition: `CREATE TABLE IF NOT EXISTS knowledge_claims (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    snippet_id   BIGINT NOT NULL,
+    claim_text   VARCHAR(1000) NOT NULL,
+    claim_key    VARCHAR(120) NOT NULL,
+    updated_at   BIGINT NOT NULL,
+    UNIQUE KEY unique_claim_key (claim_key),
+    INDEX idx_claim_snippet (snippet_id),
+    CONSTRAINT fk_claim_snippet
+        FOREIGN KEY (snippet_id) REFERENCES knowledge_snippets(id) ON DELETE CASCADE
+  );`
+  },
+  {
     table: 'decision_traces',
     definition: `CREATE TABLE IF NOT EXISTS decision_traces (
     trace_id                CHAR(36) PRIMARY KEY,

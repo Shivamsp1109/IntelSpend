@@ -55,6 +55,8 @@ import com.spendwise.presentation.components.SpendWisePurple
 import com.spendwise.presentation.components.SpendWiseSoftPurple
 import com.spendwise.presentation.components.SpendWiseTextMuted
 import com.spendwise.presentation.components.SpendWiseTextPrimary
+import androidx.compose.ui.platform.LocalUriHandler
+import com.spendwise.presentation.viewmodel.ChatCitation
 import com.spendwise.presentation.viewmodel.ChatRole
 import com.spendwise.presentation.viewmodel.ChatTurn
 import com.spendwise.presentation.viewmodel.ChatViewModel
@@ -290,6 +292,62 @@ private fun ConsentPanel(onEnable: () -> Unit) {
     }
 }
 
+/**
+ * Where a rules answer came from, tappable.
+ *
+ * Shown rather than footnoted. A claim about tax or regulation the user cannot
+ * trace back to a publisher is one they have to take on trust, and taking a
+ * financial app's word for the law is exactly what this is built to avoid
+ * asking of them.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun CitationChips(citations: List<ChatCitation>) {
+    val uriHandler = LocalUriHandler.current
+
+    Column {
+        Text(
+            "Source",
+            style = MaterialTheme.typography.bodySmall,
+            color = SpendWiseTextMuted,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(4.dp))
+
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            citations.forEach { citation ->
+                SuggestionChip(
+                    onClick = { citation.url?.let { runCatching { uriHandler.openUri(it) } } },
+                    enabled = citation.url != null,
+                    label = {
+                        Text(
+                            citation.publisher,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    colors = SuggestionChipDefaults.suggestionChipColors(
+                        labelColor = SpendWisePurple
+                    )
+                )
+            }
+        }
+
+        // The reviewer, named. An unattributed review is not one, and somebody
+        // reading a regulatory claim deserves to know a person stood behind it.
+        citations.firstOrNull()?.reviewer?.let { reviewer ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Checked by $reviewer",
+                style = MaterialTheme.typography.bodySmall,
+                color = SpendWiseTextMuted
+            )
+        }
+    }
+}
+
 @Composable
 private fun Opener() {
     Column {
@@ -333,6 +391,11 @@ private fun TurnBubble(turn: ChatTurn) {
                         style = MaterialTheme.typography.bodySmall,
                         color = SpendWiseOrange
                     )
+                }
+
+                if (turn.citations.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    CitationChips(turn.citations)
                 }
 
                 turn.caveats.forEach { caveat ->

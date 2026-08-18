@@ -6,6 +6,7 @@ const { modelLimiter } = require('../middleware/rateLimit');
 const { buildAssessmentContext, presentable } = require('../services/assessmentContext');
 const { writeTrace } = require('../services/decisionTraceStore');
 const { countCallsThisMonth, recordUsage, FEATURE } = require('../services/modelUsage');
+const { retrieve, refusalFor } = require('../services/knowledgeRetrieval');
 const { recommend, POLICY_VERSION } = require('../engine/recommendationEngine');
 const { buildValueRegistry } = require('../engine/explanationSlotFiller');
 const { constraintVersions } = require('../engine/constraintEngine');
@@ -66,6 +67,15 @@ router.post('/', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
     // would put the user's finances into a request that exists only to decline.
     if (classification.intent === INTENT.OUT_OF_SCOPE) {
       return res.json(await declineOutOfScope({
+        uid, conversationId, question, classification, now
+      }));
+    }
+
+    // A question about what a rule *is* rather than about their figures. The
+    // answer lives in a document, so the engine has nothing to contribute and
+    // the user's finances never enter the request.
+    if (classification.intent === INTENT.KNOWLEDGE) {
+      return res.json(await answerFromKnowledge({
         uid, conversationId, question, classification, now
       }));
     }
@@ -298,6 +308,101 @@ async function declineOutOfScope({ uid, conversationId, question, classification
     snapshotId: null,
     intent: INTENT.OUT_OF_SCOPE,
     paragraphs: paragraphs.map((paragraph) => paragraph.text),
+    suggestedFollowUps: [],
+    dataQuality: null,
+    wordingFallback: false
+  };
+}
+
+/**
+ * Answers a rules question from stored, reviewed text — or says there is none.
+ *
+ * The model is not involved in composing this. A passage from a regulator, shown
+ * as written with its citation, is more useful and far safer than the same
+ * passage paraphrased: paraphrasing is where a limit becomes "around" a limit
+ * and a requirement becomes a suggestion.
+ *
+ * When nothing current is on file, the refusal is explicit about which gate
+ * refused — "overdue a check" and "nothing on this" are different facts, and the
+ * first is an operational problem somebody should see.
+ */
+async function answerFromKnowledge({ uid, conversationId, question, classification, now }) {
+  const result = await retrieve({ question, now });
+
+  const paragraphs = result.found
+    ? [
+      ...result.snippets.map((snippet) => ({
+        text: snippet.text,
+        references: [],
+        citation: {
+          publisher: snippet.source.publisher,
+          title: snippet.source.title,
+          url: snippet.source.url
+        }
+      })),
+      {
+        text:
+          'That is quoted from the source shown rather than summarised, so you ' +
+          'can check it. It is general information, not advice about your ' +
+          'situation.',
+        references: []
+      }
+    ]
+    : [{
+      text:
+        `${refusalFor(result.reason)} Rather than answer from memory, which ` +
+        'could be out of date or wrong, the app would rather say so.',
+      references: []
+    }];
+
+  const traceId = await writeTrace({
+    uid,
+    userQuestion: question,
+    intent: INTENT.KNOWLEDGE,
+    snapshotId: null,
+    policyVersion: POLICY_VERSION,
+    constraintVersions: constraintVersions(),
+    consentState: { chatEnabled: true, historyTurnsSent: 0 },
+    modelProvider: 'google',
+    modelName: MODEL,
+    selectedCandidateId: null,
+    rejectedCandidateIds: [],
+    payload: {
+      intentReason: classification.reason,
+      knowledge: {
+        found: result.found,
+        reason: result.reason,
+        // Which statements were relied on, so a citation can be checked later
+        // against what was actually claimed.
+        claimKeys: result.claims.map((claim) => claim.claimKey),
+        sourceIds: result.snippets.map((snippet) => snippet.source.sourceId)
+      }
+    }
+  });
+
+  await storeExchange({
+    uid, conversationId, question, paragraphs, traceId,
+    intent: INTENT.KNOWLEDGE, rejectedReason: null, now
+  });
+
+  return {
+    conversationId,
+    traceId,
+    snapshotId: null,
+    intent: INTENT.KNOWLEDGE,
+    paragraphs: paragraphs.map((paragraph) => paragraph.text),
+    citations: result.snippets.map((snippet) => ({
+      publisher: snippet.source.publisher,
+      title: snippet.source.title,
+      url: snippet.source.url,
+      reviewer: snippet.source.reviewer
+    })),
+    claims: result.claims.map((claim) => ({
+      key: claim.claimKey,
+      text: claim.claimText,
+      publisher: claim.publisher,
+      url: claim.url
+    })),
     suggestedFollowUps: [],
     dataQuality: null,
     wordingFallback: false
