@@ -78,6 +78,11 @@ const REQUIRED_COLUMNS = [
   },
   { table: 'goals', column: 'funding_source', definition: 'VARCHAR(160) DEFAULT NULL' },
 
+  // Which feature spent the tokens, so chat and extraction have separate caps.
+  // One budget for both fails in two different ways: an import exhausting the
+  // ability to ask a question, or a conversation blocking the next import.
+  { table: 'llm_usage', column: 'feature', definition: "VARCHAR(32) NOT NULL DEFAULT 'EXTRACT'" },
+
   { table: 'expenses', column: 'reference', definition: 'VARCHAR(64) DEFAULT NULL' },
   { table: 'incomes', column: 'reference', definition: 'VARCHAR(64) DEFAULT NULL' },
   { table: 'expenses', column: 'date_is_assumed', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },

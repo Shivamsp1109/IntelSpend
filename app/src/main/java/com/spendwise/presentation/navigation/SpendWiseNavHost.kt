@@ -14,6 +14,7 @@ import com.spendwise.presentation.screens.NotificationsScreen
 import com.spendwise.presentation.screens.ProfileScreen
 import com.spendwise.presentation.screens.BudgetScreen
 import com.spendwise.presentation.screens.AssetsScreen
+import com.spendwise.presentation.screens.ChatScreen
 import com.spendwise.presentation.screens.FinancialHealthScreen
 import com.spendwise.presentation.screens.InsuranceScreen
 import com.spendwise.presentation.screens.RiskProfileScreen
@@ -110,6 +111,9 @@ fun SpendWiseNavHost() {
         composable(Routes.RiskProfile.route) {
             RiskProfileScreen(onNavigateUp = { navController.popBackStack() })
         }
+        composable(Routes.Chat.route) {
+            ChatScreen(onNavigateUp = { navController.popBackStack() })
+        }
         composable(Routes.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
@@ -124,6 +128,7 @@ fun SpendWiseNavHost() {
                 onAssets = { navController.navigate(Routes.Assets.route) },
                 onInsurance = { navController.navigate(Routes.Insurance.route) },
                 onRiskProfile = { navController.navigate(Routes.RiskProfile.route) },
+                onChat = { navController.navigate(Routes.Chat.route) },
                 onLogout = {
                     navController.navigate(Routes.Login.route) {
                         popUpTo(Routes.Home.route) { inclusive = true }

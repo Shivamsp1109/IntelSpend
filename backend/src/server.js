@@ -17,6 +17,7 @@ const riskProfileRouter = require('./routes/riskProfile');
 const financialStateRouter = require('./routes/financialState');
 const recommendationsRouter = require('./routes/recommendations');
 const decisionTraceRouter = require('./routes/decisionTrace');
+const chatRouter = require('./routes/chat');
 const extractRouter = require('./routes/extract');
 
 const app = express();
@@ -70,6 +71,7 @@ app.use('/risk-profile', riskProfileRouter);
 app.use('/financial-state', financialStateRouter);
 app.use('/recommendations', recommendationsRouter);
 app.use('/decision-trace', decisionTraceRouter);
+app.use('/chat', chatRouter);
 app.use('/extract', extractRouter);
 
 

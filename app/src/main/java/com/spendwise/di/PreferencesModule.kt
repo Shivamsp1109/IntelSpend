@@ -1,6 +1,8 @@
 package com.spendwise.di
 
+import com.spendwise.util.ChatPreferenceStore
 import com.spendwise.util.IncomePreferenceStore
+import com.spendwise.util.SharedPrefsChatPreferenceStore
 import com.spendwise.util.NarrativePreferenceStore
 import com.spendwise.util.SharedPrefsIncomePreferenceStore
 import com.spendwise.util.SharedPrefsNarrativePreferenceStore
@@ -40,4 +42,10 @@ abstract class PreferencesModule {
     abstract fun bindSyncStateStore(
         store: SharedPrefsSyncStateStore
     ): SyncStateStore
+
+    @Binds
+    @Singleton
+    abstract fun bindChatPreferenceStore(
+        store: SharedPrefsChatPreferenceStore
+    ): ChatPreferenceStore
 }

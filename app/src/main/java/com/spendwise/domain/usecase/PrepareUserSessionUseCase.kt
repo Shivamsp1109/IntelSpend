@@ -3,6 +3,7 @@ package com.spendwise.domain.usecase
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.spendwise.data.local.SpendWiseDatabase
+import com.spendwise.util.ChatPreferenceStore
 import com.spendwise.util.IncomePreferenceStore
 import com.spendwise.util.NarrativePreferenceStore
 import com.spendwise.util.RecurringReminderState
@@ -39,7 +40,8 @@ class PrepareUserSessionUseCase @Inject constructor(
     private val narrativePreferences: NarrativePreferenceStore,
     private val smartExtractionPreferences: SmartExtractionPreferenceStore,
     private val reminderState: RecurringReminderState,
-    private val syncStateStore: SyncStateStore
+    private val syncStateStore: SyncStateStore,
+    private val chatPreferences: ChatPreferenceStore
 ) {
     suspend operator fun invoke(): SessionAction {
         val uid = firebaseAuth.currentUser?.uid ?: return SessionAction.Continue
@@ -82,6 +84,9 @@ class PrepareUserSessionUseCase @Inject constructor(
         // carrying it over would let a brand new session claim its data had
         // already reached the server.
         syncStateStore.clearForNewUser()
+        // A third consent, and personal like the other two. One person agreeing
+        // to send a summary of their finances says nothing about the next.
+        chatPreferences.clearForNewUser()
     }
 
     private companion object {

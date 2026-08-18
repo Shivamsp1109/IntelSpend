@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
@@ -73,6 +74,7 @@ fun ProfileScreen(
     onAssets: () -> Unit = {},
     onInsurance: () -> Unit = {},
     onRiskProfile: () -> Unit = {},
+    onChat: () -> Unit = {},
     onLogout: () -> Unit,
     smartExtractionViewModel: SmartExtractionViewModel = hiltViewModel()
 ) {
@@ -191,6 +193,11 @@ fun ProfileScreen(
                 Icons.Default.Balance,
                 "Your Risk Profile",
                 onClick = onRiskProfile
+            )
+            ProfileItem(
+                Icons.Default.Chat,
+                "Ask About Your Money",
+                onClick = onChat
             )
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")
             ProfileItem(Icons.Default.Settings, "Settings")

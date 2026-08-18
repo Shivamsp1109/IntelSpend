@@ -10,6 +10,11 @@ const {
 const { sanitiseFigures } = require('../services/narrativeFigures');
 const { categorise, MAX_ITEMS: MAX_CATEGORY_ITEMS } = require('../services/categorisation');
 const { modelLimiter, syncLimiter } = require('../middleware/rateLimit');
+// Shared with chat, which keeps its own budget. One combined cap would let a
+// year of statement imports exhaust somebody's ability to ask a question.
+const {
+  countCallsThisMonth, recordUsage, startOfMonthMillis, FEATURE
+} = require('../services/modelUsage');
 
 const router = express.Router();
 
@@ -53,7 +58,7 @@ router.post('/', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
       throw createBadRequest(`mediaType must be one of: ${SUPPORTED_MEDIA_TYPES.join(', ')}`);
     }
 
-    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    const usedThisMonth = await countCallsThisMonth(req.user.uid, FEATURE.EXTRACT);
     if (usedThisMonth >= MONTHLY_CALL_CAP) {
       const error = new Error(
         `Monthly extraction limit of ${MONTHLY_CALL_CAP} reached. It resets at the start of next month.`
@@ -68,7 +73,7 @@ router.post('/', requireFirebaseAuth, modelLimiter, async (req, res, next) => {
     // and the cap counts rows, so it reflects actual spend rather than imports.
     // Logged after the call so a failed extraction isn't billed against the cap.
     for (const attempt of result.attempts) {
-      await recordUsage(req.user.uid, attempt);
+      await recordUsage({ uid: req.user.uid, feature: FEATURE.EXTRACT, model: attempt.model, usage: attempt.usage });
     }
 
     return res.json({
@@ -104,7 +109,7 @@ router.post('/merchants', requireFirebaseAuth, modelLimiter, async (req, res, ne
       throw createBadRequest('Each name must be a string of at most 200 characters.');
     }
 
-    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    const usedThisMonth = await countCallsThisMonth(req.user.uid, FEATURE.EXTRACT);
     if (usedThisMonth >= MONTHLY_CALL_CAP) {
       const error = new Error(
         `Monthly extraction limit of ${MONTHLY_CALL_CAP} reached. It resets at the start of next month.`
@@ -114,7 +119,7 @@ router.post('/merchants', requireFirebaseAuth, modelLimiter, async (req, res, ne
     }
 
     const result = await enrichMerchants(names);
-    await recordUsage(req.user.uid, result);
+    await recordUsage({ uid: req.user.uid, feature: FEATURE.EXTRACT, model: result.model, usage: result.usage });
 
     return res.json({ merchants: result.merchants, model: result.model });
   } catch (error) {
@@ -152,7 +157,7 @@ router.post('/categorise', requireFirebaseAuth, modelLimiter, async (req, res, n
       };
     });
 
-    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    const usedThisMonth = await countCallsThisMonth(req.user.uid, FEATURE.EXTRACT);
     if (usedThisMonth >= MONTHLY_CALL_CAP) {
       const error = new Error(
         `Monthly limit of ${MONTHLY_CALL_CAP} model calls reached. It resets at the start of next month.`
@@ -162,7 +167,7 @@ router.post('/categorise', requireFirebaseAuth, modelLimiter, async (req, res, n
     }
 
     const result = await categorise(cleaned);
-    await recordUsage(req.user.uid, result);
+    await recordUsage({ uid: req.user.uid, feature: FEATURE.EXTRACT, model: result.model, usage: result.usage });
 
     return res.json({ results: result.results, model: result.model });
   } catch (error) {
@@ -185,7 +190,7 @@ router.post('/narrative', requireFirebaseAuth, modelLimiter, async (req, res, ne
   try {
     const figures = sanitiseFigures(req.body);
 
-    const usedThisMonth = await countCallsThisMonth(req.user.uid);
+    const usedThisMonth = await countCallsThisMonth(req.user.uid, FEATURE.EXTRACT);
     if (usedThisMonth >= MONTHLY_CALL_CAP) {
       const error = new Error(
         `Monthly limit of ${MONTHLY_CALL_CAP} model calls reached. It resets at the start of next month.`
@@ -195,7 +200,7 @@ router.post('/narrative', requireFirebaseAuth, modelLimiter, async (req, res, ne
     }
 
     const result = await narrateSpending(figures);
-    await recordUsage(req.user.uid, result);
+    await recordUsage({ uid: req.user.uid, feature: FEATURE.EXTRACT, model: result.model, usage: result.usage });
 
     return res.json({
       headline: result.headline,
@@ -219,8 +224,11 @@ router.get('/usage', requireFirebaseAuth, syncLimiter, async (req, res, next) =>
               COALESCE(SUM(output_tokens), 0) AS output_tokens,
               COALESCE(SUM(estimated_cost_usd), 0) AS cost_usd
          FROM llm_usage
-        WHERE uid = ? AND created_at >= ?`,
-      [req.user.uid, startOfMonthMillis()]
+        -- Scoped to extraction, because the figure is reported against
+        -- extraction's cap. Counting chat here would show the quota shrinking
+        -- for a reason the screen does not mention.
+        WHERE uid = ? AND feature = ? AND created_at >= ?`,
+      [req.user.uid, FEATURE.EXTRACT, startOfMonthMillis()]
     );
 
     const row = rows[0] || {};
@@ -235,36 +243,6 @@ router.get('/usage', requireFirebaseAuth, syncLimiter, async (req, res, next) =>
     return next(error);
   }
 });
-
-async function countCallsThisMonth(uid) {
-  const [rows] = await pool.execute(
-    'SELECT COUNT(*) AS calls FROM llm_usage WHERE uid = ? AND created_at >= ?',
-    [uid, startOfMonthMillis()]
-  );
-  return Number(rows[0]?.calls || 0);
-}
-
-async function recordUsage(uid, attempt) {
-  const { inputTokens, outputTokens } = attempt.usage;
-  const rate = COST_PER_MTOK[attempt.model] || {
-    input: DEFAULT_INPUT_COST_PER_MTOK,
-    output: DEFAULT_OUTPUT_COST_PER_MTOK
-  };
-  const estimatedCostUsd =
-    (inputTokens / 1_000_000) * rate.input +
-    (outputTokens / 1_000_000) * rate.output;
-
-  await pool.execute(
-    `INSERT INTO llm_usage (uid, model, input_tokens, output_tokens, estimated_cost_usd, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [uid, attempt.model, inputTokens, outputTokens, estimatedCostUsd, Date.now()]
-  );
-}
-
-function startOfMonthMillis() {
-  const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
-}
 
 function createBadRequest(message) {
   const error = new Error(message);

@@ -16,6 +16,7 @@ sealed class Routes(val route: String) {
     data object Assets : Routes("assets")
     data object Insurance : Routes("insurance")
     data object RiskProfile : Routes("risk_profile")
+    data object Chat : Routes("chat")
     
     // We can pass the URI as a string parameter if needed, but since it can be large,
     // a simple approach is to use a global/ViewModel or pass the encoded Uri.

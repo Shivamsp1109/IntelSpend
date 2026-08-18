@@ -2,6 +2,7 @@ package com.spendwise.di
 
 import com.spendwise.BuildConfig
 import com.spendwise.data.remote.ExtractionApi
+import com.spendwise.data.remote.ChatApi
 import com.spendwise.data.remote.MySqlAssetApi
 import com.spendwise.data.remote.MySqlBudgetApi
 import com.spendwise.data.remote.MySqlInsuranceApi
@@ -208,5 +209,20 @@ object MySqlModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ExtractionApi::class.java)
+
+    /**
+     * Also model-backed: a question runs an intent classification and a
+     * composition, and the fast client's read timeout would abandon a request
+     * the server is still working on.
+     */
+    @Provides
+    @Singleton
+    fun provideChatApi(@ModelBacked okHttpClient: OkHttpClient): ChatApi =
+        Retrofit.Builder()
+            .baseUrl(BuildConfig.MYSQL_API_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ChatApi::class.java)
 }
 
