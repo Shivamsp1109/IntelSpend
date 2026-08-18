@@ -9,7 +9,9 @@ import com.spendwise.data.local.CategoryBudgetDao
 import com.spendwise.data.remote.MySqlBudgetDataSource
 import com.spendwise.domain.repository.AssetRepository
 import com.spendwise.domain.repository.ExpenseRepository
+import com.spendwise.domain.repository.InsuranceRepository
 import com.spendwise.domain.repository.LoanDetailsRepository
+import com.spendwise.domain.repository.RiskProfileRepository
 import com.spendwise.domain.repository.GoalRepository
 import com.spendwise.domain.repository.IncomeRepository
 import com.spendwise.domain.repository.RecurringEntryRepository
@@ -44,6 +46,8 @@ class SyncWorker @AssistedInject constructor(
     private val budgetDataSource: MySqlBudgetDataSource,
     private val assetRepository: AssetRepository,
     private val loanDetailsRepository: LoanDetailsRepository,
+    private val insuranceRepository: InsuranceRepository,
+    private val riskProfileRepository: RiskProfileRepository,
     private val syncStateStore: SyncStateStore
 ) : CoroutineWorker(context, params) {
 
@@ -102,6 +106,12 @@ class SyncWorker @AssistedInject constructor(
         // the row they hang off should already be on the server.
         runCatching { loanDetailsRepository.syncPendingLoanDetails() }
             .onFailure { Log.w(TAG, "Loan terms sync failed.", it); anyFailure = true }
+
+        runCatching { insuranceRepository.syncPendingPolicies() }
+            .onFailure { Log.w(TAG, "Insurance sync failed.", it); anyFailure = true }
+
+        runCatching { riskProfileRepository.syncPendingProfile() }
+            .onFailure { Log.w(TAG, "Risk profile sync failed.", it); anyFailure = true }
 
         return anyFailure
     }

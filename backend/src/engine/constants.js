@@ -89,6 +89,20 @@ const PERIODS_PER_MONTH = Object.freeze({
 });
 
 /**
+ * The inflation rate a goal in today's money is projected forward at.
+ *
+ * A placeholder with a deliberate shape: it is a *dated modelling assumption*,
+ * not a fact, and Stage 5 replaces it with a versioned assumption set the user
+ * can inspect and vary. It lives here for now so that every projection built on
+ * it is already labelled as assumption-driven, rather than being retrofitted
+ * later once figures have been shown as though they were certain.
+ *
+ * 6% is close to India's long-run CPI average. It will be wrong for any
+ * particular year, which is the point of reporting it as an assumption.
+ */
+const DEFAULT_INFLATION_RATE = 0.06;
+
+/**
  * Categories treated as essential when nothing else is known.
  *
  * A default, and every figure derived from it says so. Whether eating out is
@@ -122,6 +136,7 @@ const isEssentialCategory = (category) => ESSENTIAL_CATEGORIES.includes(category
 
 module.exports = {
   ENGINE_VERSION,
+  DEFAULT_INFLATION_RATE,
   ESSENTIAL_CATEGORIES,
   ESSENTIAL_SPLIT_CAVEAT,
   isEssentialCategory,

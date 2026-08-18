@@ -15,6 +15,8 @@ import com.spendwise.presentation.screens.ProfileScreen
 import com.spendwise.presentation.screens.BudgetScreen
 import com.spendwise.presentation.screens.AssetsScreen
 import com.spendwise.presentation.screens.FinancialHealthScreen
+import com.spendwise.presentation.screens.InsuranceScreen
+import com.spendwise.presentation.screens.RiskProfileScreen
 import com.spendwise.presentation.screens.RecategoriseScreen
 import com.spendwise.presentation.screens.RecurringScreen
 import com.spendwise.presentation.screens.SplashScreen
@@ -102,6 +104,12 @@ fun SpendWiseNavHost() {
         composable(Routes.Assets.route) {
             AssetsScreen(onNavigateUp = { navController.popBackStack() })
         }
+        composable(Routes.Insurance.route) {
+            InsuranceScreen(onNavigateUp = { navController.popBackStack() })
+        }
+        composable(Routes.RiskProfile.route) {
+            RiskProfileScreen(onNavigateUp = { navController.popBackStack() })
+        }
         composable(Routes.Profile.route) {
             ProfileScreen(
                 authViewModel = authViewModel,
@@ -114,6 +122,8 @@ fun SpendWiseNavHost() {
                 onBudgets = { navController.navigate(Routes.Budgets.route) },
                 onFinancialHealth = { navController.navigate(Routes.FinancialHealth.route) },
                 onAssets = { navController.navigate(Routes.Assets.route) },
+                onInsurance = { navController.navigate(Routes.Insurance.route) },
+                onRiskProfile = { navController.navigate(Routes.RiskProfile.route) },
                 onLogout = {
                     navController.navigate(Routes.Login.route) {
                         popUpTo(Routes.Home.route) { inclusive = true }

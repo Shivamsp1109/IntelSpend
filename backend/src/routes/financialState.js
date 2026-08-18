@@ -16,6 +16,10 @@ const { assessCashFlow } = require('../engine/cashFlowEngine');
 const { assessDebt } = require('../engine/debtEngine');
 const { assessNetWorth, readAsset } = require('../engine/netWorthEngine');
 const { assessEmergencyFund } = require('../engine/emergencyFundEngine');
+const { assessGoals } = require('../engine/goalEngine');
+const { assessProtection } = require('../engine/insuranceEngine');
+const { assessPortfolio } = require('../engine/portfolioEngine');
+const { readRiskProfile } = require('../engine/riskProfile');
 const { completeMonths, DEFAULT_BASELINE_MONTHS } = require('../engine/periods');
 const { COMPONENT } = require('../engine/readiness');
 
@@ -52,7 +56,7 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
     // can see the domains they cover. Debt reads the terms rather than the EMI
     // payments: what is owed and what it costs cannot be read from a payment
     // history.
-    const { loanRows, assetRows } = await loadHoldings(uid, currency);
+    const { loanRows, assetRows, policyRows, riskRow } = await loadHoldings(uid, currency);
 
     const observedState = buildObservedState({ rows, currency, period, timezone, now });
     const watermarks = sourceWatermarks({
@@ -100,6 +104,29 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
       now
     });
 
+    // Goals are measured against what is left once obligations are met, not
+    // against gross income or the raw surplus.
+    const goals = assessGoals({
+      goalRows: rows.goals,
+      availableMonthly: cashFlow.obligations.uncommittedSurplus,
+      currency,
+      now
+    });
+
+    const protection = assessProtection({
+      policyRows,
+      monthlyIncome: cashFlow.income.baseline,
+      essentialMonthlySpend: emergencyFund.essentialMonthlySpend,
+      currency,
+      now
+    });
+
+    // Portfolio suitability depends on a profile the user has confirmed. An
+    // unconfirmed one reads as unknown, and alignment is withheld rather than
+    // graded against an assumed middle.
+    const riskProfile = readRiskProfile(riskRow, now);
+    const portfolio = assessPortfolio({ assets, riskProfile, currency, now });
+
     const snapshotId = crypto.randomUUID();
     const snapshotHash = hashOf(observedState);
 
@@ -134,6 +161,19 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
         ...presentable(netWorth)
       },
       emergencyFund: presentable(emergencyFund),
+      goals: {
+        readiness: dataQuality.readiness[COMPONENT.GOAL_PROGRESS],
+        ...presentable(goals)
+      },
+      protection: {
+        readiness: dataQuality.readiness[COMPONENT.INSURANCE_GAP],
+        ...presentable(protection)
+      },
+      portfolio: {
+        readiness: dataQuality.readiness[COMPONENT.PORTFOLIO_ALIGNMENT],
+        ...presentable(portfolio)
+      },
+      riskProfile,
       sourceWatermarks: watermarks
     });
   } catch (error) {
@@ -202,7 +242,25 @@ async function loadHoldings(uid, currency) {
     [uid, currency]
   );
 
-  return { loanRows, assetRows };
+  const [policyRows] = await pool.execute(
+    `SELECT local_id, label, policy_type, provider, sum_assured, currency,
+            premium_amount, premium_cadence, policy_end_date, nominee_set
+       FROM insurance_policies
+      WHERE uid = ? AND currency = ?`,
+    [uid, currency]
+  );
+
+  // Not currency-scoped: a risk profile is not denominated in anything.
+  const [riskRows] = await pool.execute(
+    `SELECT risk_tolerance, risk_capacity, risk_need, questionnaire_version,
+            answers_json, assessment_date, limitations, user_confirmed
+       FROM risk_assessments
+      WHERE uid = ?
+      LIMIT 1`,
+    [uid]
+  );
+
+  return { loanRows, assetRows, policyRows, riskRow: riskRows[0] ?? null };
 }
 
 /** Drops anything denominated differently, so the engine below never sees a mix. */
@@ -292,7 +350,8 @@ async function loadRows(uid, period) {
   );
 
   const [goals] = await pool.execute(
-    `SELECT local_id, type, target_amount, target_date, current_saved, monthly_contribution
+    `SELECT local_id, type, target_amount, target_date, current_saved, monthly_contribution,
+            currency, amount_basis, priority, flexibility, status, funding_source
        FROM goals
       WHERE uid = ?`,
     [uid]

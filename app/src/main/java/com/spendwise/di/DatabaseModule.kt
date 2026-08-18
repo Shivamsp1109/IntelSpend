@@ -18,8 +18,11 @@ import com.spendwise.data.local.MIGRATION_10_11
 import com.spendwise.data.local.MIGRATION_11_12
 import com.spendwise.data.local.MIGRATION_12_13
 import com.spendwise.data.local.MIGRATION_13_14
+import com.spendwise.data.local.MIGRATION_14_15
 import com.spendwise.data.local.AssetDao
 import com.spendwise.data.local.LoanDetailsDao
+import com.spendwise.data.local.InsurancePolicyDao
+import com.spendwise.data.local.RiskAssessmentDao
 import com.spendwise.data.local.CategoryBudgetDao
 import com.spendwise.data.local.RecurringEntryDao
 import com.spendwise.data.local.AnalyticsDao
@@ -82,7 +85,7 @@ object DatabaseModule {
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                 MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                 MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
-                MIGRATION_13_14
+                MIGRATION_13_14, MIGRATION_14_15
             )
             .build()
     }
@@ -120,4 +123,12 @@ object DatabaseModule {
     @Provides
     fun provideLoanDetailsDao(database: SpendWiseDatabase): LoanDetailsDao =
         database.loanDetailsDao()
+
+    @Provides
+    fun provideInsurancePolicyDao(database: SpendWiseDatabase): InsurancePolicyDao =
+        database.insurancePolicyDao()
+
+    @Provides
+    fun provideRiskAssessmentDao(database: SpendWiseDatabase): RiskAssessmentDao =
+        database.riskAssessmentDao()
 }

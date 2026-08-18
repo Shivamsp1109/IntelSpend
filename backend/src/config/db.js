@@ -53,6 +53,31 @@ async function assertDatabaseConnection() {
  * statement that fixes it.
  */
 const REQUIRED_COLUMNS = [
+  // Goal terms. `amount_basis` decides whether a target gets inflated at all —
+  // a target already stated in future money must not be inflated a second time.
+  { table: 'goals', column: 'currency', definition: "VARCHAR(10) NOT NULL DEFAULT 'INR'" },
+  {
+    table: 'goals',
+    column: 'amount_basis',
+    definition: "ENUM('TODAYS_MONEY','NOMINAL_FUTURE','MANUALLY_FIXED') NOT NULL DEFAULT 'TODAYS_MONEY'"
+  },
+  {
+    table: 'goals',
+    column: 'priority',
+    definition: "ENUM('ESSENTIAL','IMPORTANT','NICE_TO_HAVE') NOT NULL DEFAULT 'IMPORTANT'"
+  },
+  {
+    table: 'goals',
+    column: 'flexibility',
+    definition: "ENUM('DATE_FLEXIBLE','AMOUNT_FLEXIBLE','BOTH_FLEXIBLE','FIXED') NOT NULL DEFAULT 'BOTH_FLEXIBLE'"
+  },
+  {
+    table: 'goals',
+    column: 'status',
+    definition: "ENUM('ACTIVE','PAUSED','ABANDONED','ACHIEVED') NOT NULL DEFAULT 'ACTIVE'"
+  },
+  { table: 'goals', column: 'funding_source', definition: 'VARCHAR(160) DEFAULT NULL' },
+
   { table: 'expenses', column: 'reference', definition: 'VARCHAR(64) DEFAULT NULL' },
   { table: 'incomes', column: 'reference', definition: 'VARCHAR(64) DEFAULT NULL' },
   { table: 'expenses', column: 'date_is_assumed', definition: 'TINYINT(1) NOT NULL DEFAULT 0' },
@@ -98,6 +123,47 @@ const REQUIRED_TABLES = [
     CONSTRAINT fk_dismissal_user
         FOREIGN KEY (uid) REFERENCES users(uid)
         ON DELETE CASCADE
+  );`
+  },
+  {
+    table: 'insurance_policies',
+    definition: `CREATE TABLE IF NOT EXISTS insurance_policies (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid               VARCHAR(128) NOT NULL,
+    local_id          INT NOT NULL,
+    policy_type       ENUM('TERM_LIFE','WHOLE_LIFE','ENDOWMENT','ULIP','HEALTH','CRITICAL_ILLNESS','PERSONAL_ACCIDENT','MOTOR','HOME','TRAVEL','OTHER') NOT NULL DEFAULT 'OTHER',
+    provider          VARCHAR(160) DEFAULT NULL,
+    label             VARCHAR(255) NOT NULL,
+    sum_assured       DECIMAL(18, 2) NOT NULL,
+    currency          VARCHAR(10) NOT NULL DEFAULT 'INR',
+    premium_amount    DECIMAL(18, 2) DEFAULT NULL,
+    premium_cadence   ENUM('MONTHLY','QUARTERLY','HALF_YEARLY','YEARLY','SINGLE') NOT NULL DEFAULT 'YEARLY',
+    policy_end_date   BIGINT DEFAULT NULL,
+    nominee_set       TINYINT(1) DEFAULT NULL,
+    updated_at        BIGINT NOT NULL,
+    UNIQUE KEY unique_policy_per_user (uid, local_id),
+    INDEX idx_insurance_type (uid, policy_type),
+    CONSTRAINT fk_insurance_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
+  );`
+  },
+  {
+    table: 'risk_assessments',
+    definition: `CREATE TABLE IF NOT EXISTS risk_assessments (
+    id                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                   VARCHAR(128) NOT NULL,
+    risk_tolerance        ENUM('LOW','MODERATE','HIGH') DEFAULT NULL,
+    risk_capacity         ENUM('LOW','MODERATE','HIGH') DEFAULT NULL,
+    risk_need             ENUM('LOW','MODERATE','HIGH') DEFAULT NULL,
+    questionnaire_version VARCHAR(20) NOT NULL,
+    answers_json          JSON DEFAULT NULL,
+    assessment_date       BIGINT NOT NULL,
+    limitations           JSON DEFAULT NULL,
+    user_confirmed        TINYINT(1) NOT NULL DEFAULT 0,
+    updated_at            BIGINT NOT NULL,
+    UNIQUE KEY unique_risk_per_user (uid),
+    CONSTRAINT fk_risk_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
   );`
   },
   {

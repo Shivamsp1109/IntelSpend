@@ -76,7 +76,23 @@ CREATE TABLE IF NOT EXISTS goals (
     target_amount        DOUBLE NOT NULL,
     target_date          BIGINT NOT NULL,
     current_saved        DOUBLE NOT NULL DEFAULT 0,
+    -- The figure the user committed to. Deliberately the only contribution
+    -- column: anything the engine works out is a suggestion returned alongside,
+    -- never written back over what they chose.
     monthly_contribution DOUBLE NOT NULL DEFAULT 0,
+    currency             VARCHAR(10) NOT NULL DEFAULT 'INR',
+    -- Whether target_amount is today's price (inflate it to the target date) or
+    -- a figure already stated in future money (do not). Inflating the second
+    -- overstates the goal by years of compounding; failing to inflate the first
+    -- understates it by the same, and there is no safe default — so the user is
+    -- asked and the engine only inflates where they said today's money.
+    amount_basis         ENUM('TODAYS_MONEY','NOMINAL_FUTURE','MANUALLY_FIXED') NOT NULL DEFAULT 'TODAYS_MONEY',
+    priority             ENUM('ESSENTIAL','IMPORTANT','NICE_TO_HAVE') NOT NULL DEFAULT 'IMPORTANT',
+    -- What can move when the goal does not fit: a school fee due in April is
+    -- not negotiable, a holiday is.
+    flexibility          ENUM('DATE_FLEXIBLE','AMOUNT_FLEXIBLE','BOTH_FLEXIBLE','FIXED') NOT NULL DEFAULT 'BOTH_FLEXIBLE',
+    status               ENUM('ACTIVE','PAUSED','ABANDONED','ACHIEVED') NOT NULL DEFAULT 'ACTIVE',
+    funding_source       VARCHAR(160) DEFAULT NULL,
     updated_at           BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY unique_user_goal (uid, local_id),
     CONSTRAINT fk_goals_user
@@ -197,6 +213,69 @@ CREATE TABLE IF NOT EXISTS category_budgets (
     CONSTRAINT fk_category_budgets_user
         FOREIGN KEY (uid) REFERENCES users(uid)
         ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Insurance.
+--
+-- Cover is the one part of a financial picture where absence is the finding. A
+-- household with dependants and no life cover has a gap worth naming, and it
+-- cannot be read from transactions — a premium leaving the account says a policy
+-- exists, not what it would pay out.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS insurance_policies (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid               VARCHAR(128) NOT NULL,
+    local_id          INT NOT NULL,
+    policy_type       ENUM('TERM_LIFE','WHOLE_LIFE','ENDOWMENT','ULIP','HEALTH','CRITICAL_ILLNESS','PERSONAL_ACCIDENT','MOTOR','HOME','TRAVEL','OTHER') NOT NULL DEFAULT 'OTHER',
+    provider          VARCHAR(160) DEFAULT NULL,
+    label             VARCHAR(255) NOT NULL,
+    -- What it would pay out: the figure a gap analysis actually needs.
+    sum_assured       DECIMAL(18, 2) NOT NULL,
+    currency          VARCHAR(10) NOT NULL DEFAULT 'INR',
+    premium_amount    DECIMAL(18, 2) DEFAULT NULL,
+    premium_cadence   ENUM('MONTHLY','QUARTERLY','HALF_YEARLY','YEARLY','SINGLE') NOT NULL DEFAULT 'YEARLY',
+    -- A lapsed policy is not cover, and this is what lets the engine say so.
+    policy_end_date   BIGINT DEFAULT NULL,
+    -- Nullable: unknown is not the same as no.
+    nominee_set       TINYINT(1) DEFAULT NULL,
+    updated_at        BIGINT NOT NULL,
+    UNIQUE KEY unique_policy_per_user (uid, local_id),
+    INDEX idx_insurance_type (uid, policy_type),
+    CONSTRAINT fk_insurance_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Risk profile.
+--
+-- Three separate columns, never combined. Willingness to accept a loss, the
+-- ability to absorb one, and the risk a goal actually requires are different
+-- things, and one averaged "risk score" is true of none of them — somebody can
+-- be perfectly comfortable with volatility and completely unable to afford it.
+--
+-- `user_confirmed` is a gate rather than a flag. A profile is never inferred
+-- from spending or holdings and quietly applied; it exists only once the user
+-- has answered and confirmed. Until then risk reads as unknown and anything
+-- depending on it is refused.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS risk_assessments (
+    id                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                   VARCHAR(128) NOT NULL,
+    risk_tolerance        ENUM('LOW','MODERATE','HIGH') DEFAULT NULL,
+    risk_capacity         ENUM('LOW','MODERATE','HIGH') DEFAULT NULL,
+    risk_need             ENUM('LOW','MODERATE','HIGH') DEFAULT NULL,
+    -- A reworded questionnaire is a different instrument; an old answer set must
+    -- not be read as though it answered the new questions.
+    questionnaire_version VARCHAR(20) NOT NULL,
+    answers_json          JSON DEFAULT NULL,
+    assessment_date       BIGINT NOT NULL,
+    limitations           JSON DEFAULT NULL,
+    user_confirmed        TINYINT(1) NOT NULL DEFAULT 0,
+    updated_at            BIGINT NOT NULL,
+    UNIQUE KEY unique_risk_per_user (uid),
+    CONSTRAINT fk_risk_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────

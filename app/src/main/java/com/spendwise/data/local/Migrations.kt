@@ -389,6 +389,69 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
  * question would be asked every month.
  */
 /**
+ * Goals given real terms, plus cover and a risk profile.
+ *
+ * The goal columns are what let the engine stop guessing at what a target means.
+ * `amountBasis` in particular decides whether a figure gets grown towards its
+ * date at all — "₹20,00,000 in three years" is either today's price or the
+ * future price, and inflating the second overstates it by years of compounding.
+ * Existing rows default to TODAYS_MONEY, which is the commoner reading and the
+ * one the app will ask about on next edit.
+ *
+ * Risk is a single-row table with a fixed key: a person has one current profile,
+ * not a history, and the fixed id makes that structural rather than a convention
+ * every caller has to honour.
+ */
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `currency` TEXT NOT NULL DEFAULT 'INR'")
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `amountBasis` TEXT NOT NULL DEFAULT 'TODAYS_MONEY'")
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `priority` TEXT NOT NULL DEFAULT 'IMPORTANT'")
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `flexibility` TEXT NOT NULL DEFAULT 'BOTH_FLEXIBLE'")
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `lifecycle` TEXT NOT NULL DEFAULT 'ACTIVE'")
+        db.execSQL("ALTER TABLE `goals` ADD COLUMN `fundingSource` TEXT")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `insurance_policies` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `label` TEXT NOT NULL,
+                `type` TEXT NOT NULL,
+                `provider` TEXT,
+                `sumAssured` REAL NOT NULL,
+                `currency` TEXT NOT NULL,
+                `premiumAmount` REAL,
+                `premiumCadence` TEXT NOT NULL,
+                `policyEndDate` INTEGER,
+                `nomineeSet` INTEGER,
+                `isSynced` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_insurance_policies_type` ON `insurance_policies` (`type`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_insurance_policies_isSynced` ON `insurance_policies` (`isSynced`)")
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `risk_assessments` (
+                `id` INTEGER NOT NULL,
+                `tolerance` TEXT,
+                `capacity` TEXT,
+                `need` TEXT,
+                `questionnaireVersion` TEXT NOT NULL,
+                `answers` TEXT NOT NULL,
+                `assessmentDate` INTEGER NOT NULL,
+                `limitations` TEXT NOT NULL,
+                `userConfirmed` INTEGER NOT NULL,
+                `isSynced` INTEGER NOT NULL,
+                PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+/**
  * What the user owns, and the terms behind what they owe.
  *
  * Both tables arrive together because the two questions they answer are the same

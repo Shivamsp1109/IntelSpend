@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Balance
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CreditCard
@@ -69,6 +71,8 @@ fun ProfileScreen(
     onBudgets: () -> Unit = {},
     onFinancialHealth: () -> Unit = {},
     onAssets: () -> Unit = {},
+    onInsurance: () -> Unit = {},
+    onRiskProfile: () -> Unit = {},
     onLogout: () -> Unit,
     smartExtractionViewModel: SmartExtractionViewModel = hiltViewModel()
 ) {
@@ -177,6 +181,16 @@ fun ProfileScreen(
                 Icons.Default.AccountBalance,
                 "What You Own",
                 onClick = onAssets
+            )
+            ProfileItem(
+                Icons.Default.Shield,
+                "Your Cover",
+                onClick = onInsurance
+            )
+            ProfileItem(
+                Icons.Default.Balance,
+                "Your Risk Profile",
+                onClick = onRiskProfile
             )
             ProfileItem(Icons.Default.ReceiptLong, "Expense Data")
             ProfileItem(Icons.Default.Settings, "Settings")

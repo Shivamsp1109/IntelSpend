@@ -16,9 +16,11 @@ import androidx.room.RoomDatabase
         DismissedRecurringCandidateEntity::class,
         CategoryBudgetEntity::class,
         AssetEntity::class,
-        LoanDetailsEntity::class
+        LoanDetailsEntity::class,
+        InsurancePolicyEntity::class,
+        RiskAssessmentEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = true
 )
 abstract class SpendWiseDatabase : RoomDatabase() {
@@ -31,4 +33,6 @@ abstract class SpendWiseDatabase : RoomDatabase() {
     abstract fun categoryBudgetDao(): CategoryBudgetDao
     abstract fun assetDao(): AssetDao
     abstract fun loanDetailsDao(): LoanDetailsDao
+    abstract fun insurancePolicyDao(): InsurancePolicyDao
+    abstract fun riskAssessmentDao(): RiskAssessmentDao
 }

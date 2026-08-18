@@ -4,7 +4,9 @@ import com.spendwise.BuildConfig
 import com.spendwise.data.remote.ExtractionApi
 import com.spendwise.data.remote.MySqlAssetApi
 import com.spendwise.data.remote.MySqlBudgetApi
+import com.spendwise.data.remote.MySqlInsuranceApi
 import com.spendwise.data.remote.MySqlLoanDetailsApi
+import com.spendwise.data.remote.MySqlRiskProfileApi
 import com.spendwise.data.remote.MySqlExpenseApi
 import com.spendwise.data.remote.MySqlGoalApi
 import com.spendwise.data.remote.MySqlIncomeApi
@@ -182,6 +184,16 @@ object MySqlModule {
     @Singleton
     fun provideMySqlLoanDetailsApi(retrofit: Retrofit): MySqlLoanDetailsApi =
         retrofit.create(MySqlLoanDetailsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMySqlInsuranceApi(retrofit: Retrofit): MySqlInsuranceApi =
+        retrofit.create(MySqlInsuranceApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideMySqlRiskProfileApi(retrofit: Retrofit): MySqlRiskProfileApi =
+        retrofit.create(MySqlRiskProfileApi::class.java)
 
     /**
      * Built on its own Retrofit so it picks up the longer-timeout client. Same

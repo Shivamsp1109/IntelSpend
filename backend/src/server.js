@@ -12,6 +12,8 @@ const recurringRouter = require('./routes/recurring');
 const budgetsRouter = require('./routes/budgets');
 const assetsRouter = require('./routes/assets');
 const loanDetailsRouter = require('./routes/loanDetails');
+const insuranceRouter = require('./routes/insurance');
+const riskProfileRouter = require('./routes/riskProfile');
 const financialStateRouter = require('./routes/financialState');
 const extractRouter = require('./routes/extract');
 
@@ -61,6 +63,8 @@ app.use('/recurring', recurringRouter);
 app.use('/budgets', budgetsRouter);
 app.use('/assets', assetsRouter);
 app.use('/loan-details', loanDetailsRouter);
+app.use('/insurance', insuranceRouter);
+app.use('/risk-profile', riskProfileRouter);
 app.use('/financial-state', financialStateRouter);
 app.use('/extract', extractRouter);
 

@@ -15,7 +15,23 @@ data class Goal(
     val targetAmount: Double,
     val targetDate: Long,
     val currentSaved: Double = 0.0,
+    /**
+     * The figure the user committed to putting aside each month.
+     *
+     * Deliberately the only contribution field. What a goal *would* need is
+     * arithmetic the engine does on demand and reports beside this; it is never
+     * written back here. A suggestion quietly promoted to a commitment is the
+     * app deciding something on the user's behalf.
+     */
     val monthlyContribution: Double = 0.0,
+    val currency: Currency = Currency.INR,
+    /** Whether [targetAmount] is today's price or a figure already in future money. */
+    val amountBasis: GoalAmountBasis = GoalAmountBasis.TODAYS_MONEY,
+    val priority: GoalPriority = GoalPriority.IMPORTANT,
+    val flexibility: GoalFlexibility = GoalFlexibility.BOTH_FLEXIBLE,
+    val lifecycle: GoalStatusLifecycle = GoalStatusLifecycle.ACTIVE,
+    /** Where the money is expected to come from, in the user's own words. */
+    val fundingSource: String? = null,
     val isSynced: Boolean = false
 ) {
     /** Progress as a fraction in [0, 1]. */
