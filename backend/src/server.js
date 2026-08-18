@@ -15,6 +15,8 @@ const loanDetailsRouter = require('./routes/loanDetails');
 const insuranceRouter = require('./routes/insurance');
 const riskProfileRouter = require('./routes/riskProfile');
 const financialStateRouter = require('./routes/financialState');
+const recommendationsRouter = require('./routes/recommendations');
+const decisionTraceRouter = require('./routes/decisionTrace');
 const extractRouter = require('./routes/extract');
 
 const app = express();
@@ -66,6 +68,8 @@ app.use('/loan-details', loanDetailsRouter);
 app.use('/insurance', insuranceRouter);
 app.use('/risk-profile', riskProfileRouter);
 app.use('/financial-state', financialStateRouter);
+app.use('/recommendations', recommendationsRouter);
+app.use('/decision-trace', decisionTraceRouter);
 app.use('/extract', extractRouter);
 
 

@@ -126,6 +126,35 @@ const REQUIRED_TABLES = [
   );`
   },
   {
+    table: 'decision_traces',
+    definition: `CREATE TABLE IF NOT EXISTS decision_traces (
+    trace_id                CHAR(36) PRIMARY KEY,
+    uid                     VARCHAR(128) NOT NULL,
+    user_question           TEXT DEFAULT NULL,
+    intent                  VARCHAR(64) NOT NULL,
+    snapshot_id             CHAR(36) DEFAULT NULL,
+    engine_version          VARCHAR(20) NOT NULL,
+    policy_version          VARCHAR(20) NOT NULL,
+    constraint_versions_json JSON NOT NULL,
+    payload_schema_version  INT NOT NULL,
+    consent_state           JSON DEFAULT NULL,
+    model_provider          VARCHAR(64) DEFAULT NULL,
+    model_name              VARCHAR(128) DEFAULT NULL,
+    selected_candidate_id   VARCHAR(64) DEFAULT NULL,
+    rejected_candidate_ids_json JSON NOT NULL,
+    payload                 JSON DEFAULT NULL,
+    created_at              BIGINT NOT NULL,
+    redacted_at             BIGINT DEFAULT NULL,
+    INDEX idx_trace_user_time (uid, created_at DESC),
+    INDEX idx_trace_snapshot (snapshot_id),
+    INDEX idx_trace_retention (created_at),
+    CONSTRAINT fk_trace_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE,
+    CONSTRAINT fk_trace_snapshot
+        FOREIGN KEY (snapshot_id) REFERENCES financial_snapshots(snapshot_id) ON DELETE SET NULL
+  );`
+  },
+  {
     table: 'assumption_sets',
     definition: `CREATE TABLE IF NOT EXISTS assumption_sets (
     id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
