@@ -126,6 +126,61 @@ const REQUIRED_TABLES = [
   );`
   },
   {
+    table: 'assumption_sets',
+    definition: `CREATE TABLE IF NOT EXISTS assumption_sets (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    uid                 VARCHAR(128) DEFAULT NULL,
+    scenario_type       ENUM('CONSERVATIVE','BASE','OPTIMISTIC') NOT NULL,
+    asset_class         ENUM('CASH','DEBT','EQUITY','GOLD','REAL_ESTATE','BLENDED','NONE') NOT NULL DEFAULT 'NONE',
+    time_horizon_band   ENUM('SHORT','MEDIUM','LONG','ANY') NOT NULL DEFAULT 'ANY',
+    jurisdiction        VARCHAR(8) NOT NULL DEFAULT 'IN',
+    currency            VARCHAR(10) NOT NULL DEFAULT 'INR',
+    inflation_rate      DECIMAL(7, 4) DEFAULT NULL,
+    expected_return     DECIMAL(7, 4) DEFAULT NULL,
+    income_growth_rate  DECIMAL(7, 4) DEFAULT NULL,
+    expense_growth_rate DECIMAL(7, 4) DEFAULT NULL,
+    source              VARCHAR(500) NOT NULL,
+    methodology         VARCHAR(500) DEFAULT NULL,
+    effective_from      BIGINT NOT NULL,
+    effective_to        BIGINT DEFAULT NULL,
+    version             VARCHAR(20) NOT NULL,
+    approval_status     ENUM('DRAFT','APPROVED','SUPERSEDED') NOT NULL DEFAULT 'DRAFT',
+    updated_at          BIGINT NOT NULL,
+    INDEX idx_assumption_lookup (scenario_type, asset_class, time_horizon_band, jurisdiction, approval_status),
+    INDEX idx_assumption_user (uid),
+    CONSTRAINT fk_assumption_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE
+  );
+
+  -- NOTE: the system assumption sets must also be seeded. Run migrations
+  -- (npm run migrate) rather than pasting this, or projections will find no
+  -- approved assumptions and refuse to produce a figure.`
+  },
+  {
+    table: 'scenario_runs',
+    definition: `CREATE TABLE IF NOT EXISTS scenario_runs (
+    run_id            CHAR(36) PRIMARY KEY,
+    uid               VARCHAR(128) NOT NULL,
+    snapshot_id       CHAR(36) DEFAULT NULL,
+    assumption_set_id BIGINT DEFAULT NULL,
+    scenario_type     ENUM('CONSERVATIVE','BASE','OPTIMISTIC') NOT NULL,
+    subject_type      ENUM('GOAL','DEBT_PAYOFF','PORTFOLIO','CASH_FLOW') NOT NULL,
+    subject_local_id  INT DEFAULT NULL,
+    inputs_hash       CHAR(64) NOT NULL,
+    outputs_json      JSON NOT NULL,
+    engine_version    VARCHAR(20) NOT NULL,
+    run_at            BIGINT NOT NULL,
+    INDEX idx_scenario_run_user (uid, run_at DESC),
+    INDEX idx_scenario_run_snapshot (snapshot_id),
+    CONSTRAINT fk_scenario_run_user
+        FOREIGN KEY (uid) REFERENCES users(uid) ON DELETE CASCADE,
+    CONSTRAINT fk_scenario_run_snapshot
+        FOREIGN KEY (snapshot_id) REFERENCES financial_snapshots(snapshot_id) ON DELETE SET NULL,
+    CONSTRAINT fk_scenario_run_assumptions
+        FOREIGN KEY (assumption_set_id) REFERENCES assumption_sets(id) ON DELETE SET NULL
+  );`
+  },
+  {
     table: 'insurance_policies',
     definition: `CREATE TABLE IF NOT EXISTS insurance_policies (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,

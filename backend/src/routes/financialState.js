@@ -20,6 +20,9 @@ const { assessGoals } = require('../engine/goalEngine');
 const { assessProtection } = require('../engine/insuranceEngine');
 const { assessPortfolio } = require('../engine/portfolioEngine');
 const { readRiskProfile } = require('../engine/riskProfile');
+const {
+  projectGoalAcrossScenarios, findAssumption, ASSET_CLASS, HORIZON, SCENARIO
+} = require('../engine/scenarioEngine');
 const { completeMonths, DEFAULT_BASELINE_MONTHS } = require('../engine/periods');
 const { COMPONENT } = require('../engine/readiness');
 
@@ -104,14 +107,52 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
       now
     });
 
+    // The base inflation assumption replaces what was a constant in code, so
+    // every grown figure now points at a dated, sourced row rather than a
+    // number somebody chose once.
+    const assumptions = await loadAssumptions(uid);
+    const baseInflation = findAssumption(assumptions, {
+      scenarioType: SCENARIO.BASE,
+      assetClass: ASSET_CLASS.NONE,
+      horizonBand: HORIZON.ANY
+    });
+
     // Goals are measured against what is left once obligations are met, not
     // against gross income or the raw surplus.
     const goals = assessGoals({
       goalRows: rows.goals,
       availableMonthly: cashFlow.obligations.uncommittedSurplus,
       currency,
-      now
+      now,
+      ...(baseInflation?.inflation_rate != null
+        ? { inflationRate: Number(baseInflation.inflation_rate) / 100 }
+        : {})
     });
+
+    // One projection per goal, across all three scenarios. The spread is the
+    // finding: a goal reached under one set of assumptions and missed under
+    // another is a different answer from one reached under all three.
+    const scenarios = goals.goals
+      .filter((goal) => goal.status === 'ACTIVE' && goal.monthsRemaining > 0)
+      .map((goal) => projectGoalAcrossScenarios({
+        goal: {
+          localId: goal.localId,
+          type: goal.type,
+          targetAmount: goal.targetAsEntered,
+          alreadySaved: goal.alreadySaved,
+          monthsRemaining: goal.monthsRemaining,
+          amountBasis: goal.amountBasis,
+          // The same gate the goal engine applies, passed through rather than
+          // re-derived, so a scenario cannot inflate what the goal engine would
+          // have left alone.
+          inflateTarget: goal.amountBasis === 'TODAYS_MONEY',
+          assetClass: ASSET_CLASS.BLENDED
+        },
+        assumptions,
+        monthlyContribution: goal.committedMonthlyContribution,
+        currency,
+        now
+      }));
 
     const protection = assessProtection({
       policyRows,
@@ -174,6 +215,21 @@ router.get('/snapshot', requireFirebaseAuth, syncLimiter, async (req, res, next)
         ...presentable(portfolio)
       },
       riskProfile,
+      scenarios: presentable(scenarios),
+      // Named so a reader can see what every projected figure rested on,
+      // without having to go and look it up.
+      assumptionsInUse: assumptions
+        .filter((row) => row.uid === null || row.uid === uid)
+        .map((row) => ({
+          id: row.id,
+          scenarioType: row.scenario_type,
+          assetClass: row.asset_class,
+          timeHorizonBand: row.time_horizon_band,
+          inflationPercent: row.inflation_rate === null ? null : Number(row.inflation_rate),
+          expectedReturnPercent: row.expected_return === null ? null : Number(row.expected_return),
+          source: row.source,
+          version: row.version
+        })),
       sourceWatermarks: watermarks
     });
   } catch (error) {
@@ -261,6 +317,33 @@ async function loadHoldings(uid, currency) {
   );
 
   return { loanRows, assetRows, policyRows, riskRow: riskRows[0] ?? null };
+}
+
+/**
+ * Approved assumptions available to this user.
+ *
+ * System defaults plus any override they have set. Drafts are excluded here as
+ * well as in the engine — a figure shown to somebody must never rest on an
+ * assumption nobody has reviewed.
+ */
+async function loadAssumptions(uid) {
+  const [rows] = await pool.execute(
+    `SELECT id, uid, scenario_type, asset_class, time_horizon_band, jurisdiction,
+            currency, inflation_rate, expected_return, income_growth_rate,
+            expense_growth_rate, source, methodology, version, approval_status
+       FROM assumption_sets
+      WHERE approval_status = 'APPROVED'
+        AND (uid IS NULL OR uid = ?)
+        AND effective_from <= ?
+        AND (effective_to IS NULL OR effective_to > ?)
+      -- A user's own override sorts first, so the engine's first match is
+      -- theirs where one exists and the system default otherwise. The engine
+      -- takes the first match, so this ordering is what makes an override an
+      -- override rather than a row that is silently never read.
+      ORDER BY (uid IS NULL) ASC, id ASC`,
+    [uid, Date.now(), Date.now()]
+  );
+  return rows;
 }
 
 /** Drops anything denominated differently, so the engine below never sees a mix. */
